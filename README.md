@@ -1,8 +1,8 @@
-# InstructionSetSimulator
+# Out of Order Simulator
 
 An instruction set simulator coded in C language, which mimics the behavior of a microprocessor by "reading" instructions and maintaining internal variables which represent the processor's registers.
 
-Project 2 - APEX Pipeline Simulator
+Project 2 - APEX Out of Order Simulator
 ============
 
 A simple implementation of Out of Order APEX Pipeline
@@ -48,18 +48,7 @@ How to compile and run
 Test Run
 ============		
 
-Project 1
-============		
-
-Branch :: master
-	1) File : input_test_0.asm ---> 39 cycle (!Forwarding) till HALT instruction is processed in Writeback.
-	2) File : input_test_1.asm ---> 41 cycle (!Forwarding) till HALT instruction is processed in Writeback.
-Branch :: data_forwarding
-	1) File : input_test_0.asm ---> 28 cycle (Forwarding) till HALT instruction is processed in Writeback.
-	1) File : input_test_1.asm ---> 27 cycle (Forwarding) till HALT instruction is processed in Writeback.
-
 Project 2
 ============		
 
 Branch :: out_of_order
-
