@@ -1,0 +1,803 @@
+APEX_CPU : Initialized APEX CPU, loaded 19 instructions
+APEX_CPU : Printing Code Memory
+opcode    rd        rs1       rs2       imm
+MOVC      10        0         0         0
+MOVC      15        0         0         44
+MOVC      0         0         0         232
+ADD       6         0         15        0
+MOVC      3         0         0         0
+STORE     6         10        0         48
+SUB       5         6         15        0
+MUL       5         6         3         0
+ADD       10        15        3         0
+MUL       8         0         5         0
+MUL       5         3         10        0
+LOAD      3         10        0         4
+OR        7         3         5         0
+SUB       8         5         7         0
+EX-OR     3         10        6         0
+AND       9         5         10        0
+HALT      0         0         0         0
+SUB       11        10        3         0
+ADD       10        3         0         0
+
+--------------------------------
+Clock Cycle #: 1
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 0: pc(0)  ---> EMPTY
+Memory Two     : 0: pc(0)  ---> EMPTY
+Memory One     : 0: pc(0)  ---> EMPTY
+Execute Two    : 0: pc(0)  ---> EMPTY
+Execute One    : 0: pc(0)  ---> EMPTY
+Decode/RF      : 0: pc(0)  ---> EMPTY
+Fetch          : 1: pc(4000) MOVC,R10,#0
+
+--------------------------------
+Clock Cycle #: 1 Instructions Pushed
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 0: pc(0)  ---> EMPTY
+Memory Two     : 0: pc(0)  ---> EMPTY
+Memory One     : 0: pc(0)  ---> EMPTY
+Execute Two    : 0: pc(0)  ---> EMPTY
+Execute One    : 0: pc(0)  ---> EMPTY
+Decode/RF      : 0: pc(4000) MOVC,R10,#0
+Fetch          : 1: pc(4000) MOVC,R10,#0
+
+--------------------------------
+Clock Cycle #: 2
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 0: pc(0)  ---> EMPTY
+Memory Two     : 0: pc(0)  ---> EMPTY
+Memory One     : 0: pc(0)  ---> EMPTY
+Execute Two    : 0: pc(0)  ---> EMPTY
+Execute One    : 0: pc(0)  ---> EMPTY
+Decode/RF      : 1: pc(4000) MOVC,R10,#0
+Fetch          : 1: pc(4004) MOVC,R15,#44
+
+--------------------------------
+Clock Cycle #: 2 Instructions Pushed
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 0: pc(0)  ---> EMPTY
+Memory Two     : 0: pc(0)  ---> EMPTY
+Memory One     : 0: pc(0)  ---> EMPTY
+Execute Two    : 0: pc(0)  ---> EMPTY
+Execute One    : 0: pc(4000) MOVC,R10,#0
+Decode/RF      : 0: pc(4004) MOVC,R15,#44
+Fetch          : 1: pc(4004) MOVC,R15,#44
+
+--------------------------------
+Clock Cycle #: 3
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 0: pc(0)  ---> EMPTY
+Memory Two     : 0: pc(0)  ---> EMPTY
+Memory One     : 0: pc(0)  ---> EMPTY
+Execute Two    : 0: pc(0)  ---> EMPTY
+Execute One    : 1: pc(4000) MOVC,R10,#0
+Decode/RF      : 1: pc(4004) MOVC,R15,#44
+Fetch          : 1: pc(4008) MOVC,R0,#232
+
+--------------------------------
+Clock Cycle #: 3 Instructions Pushed
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 0: pc(0)  ---> EMPTY
+Memory Two     : 0: pc(0)  ---> EMPTY
+Memory One     : 0: pc(0)  ---> EMPTY
+Execute Two    : 0: pc(4000) MOVC,R10,#0
+Execute One    : 0: pc(4004) MOVC,R15,#44
+Decode/RF      : 0: pc(4008) MOVC,R0,#232
+Fetch          : 1: pc(4008) MOVC,R0,#232
+
+--------------------------------
+Clock Cycle #: 4
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 0: pc(0)  ---> EMPTY
+Memory Two     : 0: pc(0)  ---> EMPTY
+Memory One     : 0: pc(0)  ---> EMPTY
+Execute Two    : 1: pc(4000) MOVC,R10,#0
+Execute One    : 1: pc(4004) MOVC,R15,#44
+Decode/RF      : 1: pc(4008) MOVC,R0,#232
+Fetch          : 1: pc(4012) ADD,R6,R0,R15
+
+--------------------------------
+Clock Cycle #: 4 Instructions Pushed
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 0: pc(0)  ---> EMPTY
+Memory Two     : 0: pc(0)  ---> EMPTY
+Memory One     : 0: pc(4000) MOVC,R10,#0
+Execute Two    : 0: pc(4004) MOVC,R15,#44
+Execute One    : 0: pc(4008) MOVC,R0,#232
+Decode/RF      : 0: pc(4012) ADD,R6,R0,R15
+Fetch          : 1: pc(4012) ADD,R6,R0,R15
+
+--------------------------------
+Clock Cycle #: 5
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 0: pc(0)  ---> EMPTY
+Memory Two     : 0: pc(0)  ---> EMPTY
+Memory One     : 1: pc(4000) MOVC,R10,#0
+Execute Two    : 1: pc(4004) MOVC,R15,#44
+Execute One    : 1: pc(4008) MOVC,R0,#232
+Decode/RF      : 1: pc(4012) ADD,R6,R0,R15  ---> STALLED
+Fetch          : 0: pc(4012) ADD,R6,R0,R15  ---> STALLED
+
+--------------------------------
+Clock Cycle #: 5 Instructions Pushed
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 0: pc(0)  ---> EMPTY
+Memory Two     : 0: pc(4000) MOVC,R10,#0
+Memory One     : 0: pc(4004) MOVC,R15,#44
+Execute Two    : 0: pc(4008) MOVC,R0,#232
+Execute One    : 0: pc(4008) NOP
+Decode/RF      : 1: pc(4012) ADD,R6,R0,R15  ---> STALLED
+Fetch          : 0: pc(4012) ADD,R6,R0,R15  ---> STALLED
+
+--------------------------------
+Clock Cycle #: 6
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 0: pc(0)  ---> EMPTY
+Memory Two     : 1: pc(4000) MOVC,R10,#0
+Memory One     : 1: pc(4004) MOVC,R15,#44
+Execute Two    : 1: pc(4008) MOVC,R0,#232
+Execute One    : 1: pc(4008) NOP
+Decode/RF      : 1: pc(4012) ADD,R6,R0,R15
+Fetch          : 1: pc(4016) MOVC,R3,#0
+
+--------------------------------
+Clock Cycle #: 6 Instructions Pushed
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 0: pc(4000) MOVC,R10,#0
+Memory Two     : 0: pc(4004) MOVC,R15,#44
+Memory One     : 0: pc(4008) MOVC,R0,#232
+Execute Two    : 0: pc(4008) NOP
+Execute One    : 0: pc(4012) ADD,R6,R0,R15
+Decode/RF      : 0: pc(4016) MOVC,R3,#0
+Fetch          : 1: pc(4016) MOVC,R3,#0
+
+--------------------------------
+Clock Cycle #: 7
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 1: pc(4000) MOVC,R10,#0
+Memory Two     : 1: pc(4004) MOVC,R15,#44
+Memory One     : 1: pc(4008) MOVC,R0,#232
+Execute Two    : 1: pc(4008) NOP
+Execute One    : 1: pc(4012) ADD,R6,R0,R15
+Decode/RF      : 1: pc(4016) MOVC,R3,#0
+Fetch          : 1: pc(4020) STORE,R6,R10,#48
+
+--------------------------------
+Clock Cycle #: 7 Instructions Pushed
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 0: pc(4004) MOVC,R15,#44
+Memory Two     : 0: pc(4008) MOVC,R0,#232
+Memory One     : 0: pc(4008) NOP
+Execute Two    : 0: pc(4012) ADD,R6,R0,R15
+Execute One    : 0: pc(4016) MOVC,R3,#0
+Decode/RF      : 0: pc(4020) STORE,R6,R10,#48
+Fetch          : 1: pc(4020) STORE,R6,R10,#48
+
+--------------------------------
+Clock Cycle #: 8
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 1: pc(4004) MOVC,R15,#44
+Memory Two     : 1: pc(4008) MOVC,R0,#232
+Memory One     : 1: pc(4008) NOP
+Execute Two    : 1: pc(4012) ADD,R6,R0,R15
+Execute One    : 1: pc(4016) MOVC,R3,#0
+Decode/RF      : 1: pc(4020) STORE,R6,R10,#48
+Fetch          : 1: pc(4024) SUB,R5,R6,R15
+
+--------------------------------
+Clock Cycle #: 8 Instructions Pushed
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 0: pc(4008) MOVC,R0,#232
+Memory Two     : 0: pc(4008) NOP
+Memory One     : 0: pc(4012) ADD,R6,R0,R15
+Execute Two    : 0: pc(4016) MOVC,R3,#0
+Execute One    : 0: pc(4020) STORE,R6,R10,#48
+Decode/RF      : 0: pc(4024) SUB,R5,R6,R15
+Fetch          : 1: pc(4024) SUB,R5,R6,R15
+
+--------------------------------
+Clock Cycle #: 9
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 1: pc(4008) MOVC,R0,#232
+Memory Two     : 1: pc(4008) NOP
+Memory One     : 1: pc(4012) ADD,R6,R0,R15
+Execute Two    : 1: pc(4016) MOVC,R3,#0
+Execute One    : 1: pc(4020) STORE,R6,R10,#48
+Decode/RF      : 1: pc(4024) SUB,R5,R6,R15
+Fetch          : 1: pc(4028) MUL,R5,R6,R3
+
+--------------------------------
+Clock Cycle #: 9 Instructions Pushed
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 0: pc(4008) NOP
+Memory Two     : 0: pc(4012) ADD,R6,R0,R15
+Memory One     : 0: pc(4016) MOVC,R3,#0
+Execute Two    : 0: pc(4020) STORE,R6,R10,#48
+Execute One    : 0: pc(4024) SUB,R5,R6,R15
+Decode/RF      : 0: pc(4028) MUL,R5,R6,R3
+Fetch          : 1: pc(4028) MUL,R5,R6,R3
+
+--------------------------------
+Clock Cycle #: 10
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 1: pc(4008) NOP
+Memory Two     : 1: pc(4012) ADD,R6,R0,R15
+Memory One     : 1: pc(4016) MOVC,R3,#0
+Execute Two    : 1: pc(4020) STORE,R6,R10,#48
+Execute One    : 1: pc(4024) SUB,R5,R6,R15
+Decode/RF      : 1: pc(4028) MUL,R5,R6,R3
+Fetch          : 1: pc(4032) ADD,R10,R15,R3
+
+--------------------------------
+Clock Cycle #: 10 Instructions Pushed
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 0: pc(4012) ADD,R6,R0,R15
+Memory Two     : 0: pc(4016) MOVC,R3,#0
+Memory One     : 0: pc(4020) STORE,R6,R10,#48
+Execute Two    : 0: pc(4024) SUB,R5,R6,R15
+Execute One    : 0: pc(4028) MUL,R5,R6,R3
+Decode/RF      : 0: pc(4032) ADD,R10,R15,R3
+Fetch          : 1: pc(4032) ADD,R10,R15,R3
+
+--------------------------------
+Clock Cycle #: 11
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 1: pc(4012) ADD,R6,R0,R15
+Memory Two     : 1: pc(4016) MOVC,R3,#0
+Memory One     : 1: pc(4020) STORE,R6,R10,#48
+Execute Two    : 1: pc(4024) SUB,R5,R6,R15
+Execute One    : 1: pc(4028) MUL,R5,R6,R3
+Decode/RF      : 1: pc(4032) ADD,R10,R15,R3
+Fetch          : 1: pc(4036) MUL,R8,R0,R5
+
+--------------------------------
+Clock Cycle #: 11 Instructions Pushed
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 0: pc(4016) MOVC,R3,#0
+Memory Two     : 0: pc(4020) STORE,R6,R10,#48
+Memory One     : 0: pc(4024) SUB,R5,R6,R15
+Execute Two    : 0: pc(4028) MUL,R5,R6,R3
+Execute One    : 0: pc(4032) ADD,R10,R15,R3
+Decode/RF      : 0: pc(4036) MUL,R8,R0,R5
+Fetch          : 1: pc(4036) MUL,R8,R0,R5
+
+--------------------------------
+Clock Cycle #: 12
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 1: pc(4016) MOVC,R3,#0
+Memory Two     : 1: pc(4020) STORE,R6,R10,#48
+Memory One     : 1: pc(4024) SUB,R5,R6,R15
+Execute Two    : 1: pc(4028) MUL,R5,R6,R3
+Execute One    : 1: pc(4032) ADD,R10,R15,R3
+Decode/RF      : 1: pc(4036) MUL,R8,R0,R5
+Fetch          : 1: pc(4040) MUL,R5,R3,R10
+
+--------------------------------
+Clock Cycle #: 12 Instructions Pushed
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 0: pc(4020) STORE,R6,R10,#48
+Memory Two     : 0: pc(4024) SUB,R5,R6,R15
+Memory One     : 0: pc(4028) MUL,R5,R6,R3
+Execute Two    : 0: pc(4032) ADD,R10,R15,R3
+Execute One    : 0: pc(4036) MUL,R8,R0,R5
+Decode/RF      : 0: pc(4040) MUL,R5,R3,R10
+Fetch          : 1: pc(4040) MUL,R5,R3,R10
+
+--------------------------------
+Clock Cycle #: 13
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 1: pc(4020) STORE,R6,R10,#48
+Memory Two     : 1: pc(4024) SUB,R5,R6,R15
+Memory One     : 1: pc(4028) MUL,R5,R6,R3
+Execute Two    : 1: pc(4032) ADD,R10,R15,R3
+Execute One    : 1: pc(4036) MUL,R8,R0,R5
+Decode/RF      : 1: pc(4040) MUL,R5,R3,R10
+Fetch          : 1: pc(4044) LOAD,R3,R10,#4
+
+--------------------------------
+Clock Cycle #: 13 Instructions Pushed
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 0: pc(4024) SUB,R5,R6,R15
+Memory Two     : 0: pc(4028) MUL,R5,R6,R3
+Memory One     : 0: pc(4032) ADD,R10,R15,R3
+Execute Two    : 0: pc(4036) MUL,R8,R0,R5
+Execute One    : 0: pc(4040) MUL,R5,R3,R10
+Decode/RF      : 0: pc(4044) LOAD,R3,R10,#4
+Fetch          : 1: pc(4044) LOAD,R3,R10,#4
+
+--------------------------------
+Clock Cycle #: 14
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 1: pc(4024) SUB,R5,R6,R15
+Memory Two     : 1: pc(4028) MUL,R5,R6,R3
+Memory One     : 1: pc(4032) ADD,R10,R15,R3
+Execute Two    : 1: pc(4036) MUL,R8,R0,R5
+Execute One    : 1: pc(4040) MUL,R5,R3,R10
+Decode/RF      : 1: pc(4044) LOAD,R3,R10,#4
+Fetch          : 1: pc(4048) OR,R7,R3,R5
+
+--------------------------------
+Clock Cycle #: 14 Instructions Pushed
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 0: pc(4028) MUL,R5,R6,R3
+Memory Two     : 0: pc(4032) ADD,R10,R15,R3
+Memory One     : 0: pc(4036) MUL,R8,R0,R5
+Execute Two    : 0: pc(4040) MUL,R5,R3,R10
+Execute One    : 0: pc(4044) LOAD,R3,R10,#4
+Decode/RF      : 0: pc(4048) OR,R7,R3,R5
+Fetch          : 1: pc(4048) OR,R7,R3,R5
+
+--------------------------------
+Clock Cycle #: 15
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 1: pc(4028) MUL,R5,R6,R3
+Memory Two     : 1: pc(4032) ADD,R10,R15,R3
+Memory One     : 1: pc(4036) MUL,R8,R0,R5
+Execute Two    : 1: pc(4040) MUL,R5,R3,R10
+Execute One    : 1: pc(4044) LOAD,R3,R10,#4
+Decode/RF      : 1: pc(4048) OR,R7,R3,R5  ---> STALLED
+Fetch          : 0: pc(4048) OR,R7,R3,R5  ---> STALLED
+
+--------------------------------
+Clock Cycle #: 15 Instructions Pushed
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 0: pc(4032) ADD,R10,R15,R3
+Memory Two     : 0: pc(4036) MUL,R8,R0,R5
+Memory One     : 0: pc(4040) MUL,R5,R3,R10
+Execute Two    : 0: pc(4044) LOAD,R3,R10,#4
+Execute One    : 0: pc(4044) NOP
+Decode/RF      : 1: pc(4048) OR,R7,R3,R5  ---> STALLED
+Fetch          : 0: pc(4048) OR,R7,R3,R5  ---> STALLED
+
+--------------------------------
+Clock Cycle #: 16
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 1: pc(4032) ADD,R10,R15,R3
+Memory Two     : 1: pc(4036) MUL,R8,R0,R5
+Memory One     : 1: pc(4040) MUL,R5,R3,R10
+Execute Two    : 1: pc(4044) LOAD,R3,R10,#4
+Execute One    : 1: pc(4044) NOP
+Decode/RF      : 1: pc(4048) OR,R7,R3,R5  ---> STALLED
+Fetch          : 0: pc(4048) OR,R7,R3,R5  ---> STALLED
+
+--------------------------------
+Clock Cycle #: 16 Instructions Pushed
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 0: pc(4036) MUL,R8,R0,R5
+Memory Two     : 0: pc(4040) MUL,R5,R3,R10
+Memory One     : 0: pc(4044) LOAD,R3,R10,#4
+Execute Two    : 0: pc(4044) NOP
+Execute One    : 0: pc(4044) NOP
+Decode/RF      : 1: pc(4048) OR,R7,R3,R5  ---> STALLED
+Fetch          : 0: pc(4048) OR,R7,R3,R5  ---> STALLED
+
+--------------------------------
+Clock Cycle #: 17
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 1: pc(4036) MUL,R8,R0,R5
+Memory Two     : 1: pc(4040) MUL,R5,R3,R10
+Memory One     : 1: pc(4044) LOAD,R3,R10,#4
+Execute Two    : 1: pc(4044) NOP
+Execute One    : 1: pc(4044) NOP
+Decode/RF      : 1: pc(4048) OR,R7,R3,R5
+Fetch          : 1: pc(4052) SUB,R8,R5,R7
+
+--------------------------------
+Clock Cycle #: 17 Instructions Pushed
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 0: pc(4040) MUL,R5,R3,R10
+Memory Two     : 0: pc(4044) LOAD,R3,R10,#4
+Memory One     : 0: pc(4044) NOP
+Execute Two    : 0: pc(4044) NOP
+Execute One    : 0: pc(4048) OR,R7,R3,R5
+Decode/RF      : 0: pc(4052) SUB,R8,R5,R7
+Fetch          : 1: pc(4052) SUB,R8,R5,R7
+
+--------------------------------
+Clock Cycle #: 18
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 1: pc(4040) MUL,R5,R3,R10
+Memory Two     : 1: pc(4044) LOAD,R3,R10,#4
+Memory One     : 1: pc(4044) NOP
+Execute Two    : 1: pc(4044) NOP
+Execute One    : 1: pc(4048) OR,R7,R3,R5
+Decode/RF      : 1: pc(4052) SUB,R8,R5,R7  ---> STALLED
+Fetch          : 0: pc(4052) SUB,R8,R5,R7  ---> STALLED
+
+--------------------------------
+Clock Cycle #: 18 Instructions Pushed
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 0: pc(4044) LOAD,R3,R10,#4
+Memory Two     : 0: pc(4044) NOP
+Memory One     : 0: pc(4044) NOP
+Execute Two    : 0: pc(4048) OR,R7,R3,R5
+Execute One    : 0: pc(4048) NOP
+Decode/RF      : 1: pc(4052) SUB,R8,R5,R7  ---> STALLED
+Fetch          : 0: pc(4052) SUB,R8,R5,R7  ---> STALLED
+
+--------------------------------
+Clock Cycle #: 19
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 1: pc(4044) LOAD,R3,R10,#4
+Memory Two     : 1: pc(4044) NOP
+Memory One     : 1: pc(4044) NOP
+Execute Two    : 1: pc(4048) OR,R7,R3,R5
+Execute One    : 1: pc(4048) NOP
+Decode/RF      : 1: pc(4052) SUB,R8,R5,R7
+Fetch          : 1: pc(4056) EX-OR,R3,R10,R6
+
+--------------------------------
+Clock Cycle #: 19 Instructions Pushed
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 0: pc(4044) NOP
+Memory Two     : 0: pc(4044) NOP
+Memory One     : 0: pc(4048) OR,R7,R3,R5
+Execute Two    : 0: pc(4048) NOP
+Execute One    : 0: pc(4052) SUB,R8,R5,R7
+Decode/RF      : 0: pc(4056) EX-OR,R3,R10,R6
+Fetch          : 1: pc(4056) EX-OR,R3,R10,R6
+
+--------------------------------
+Clock Cycle #: 20
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 1: pc(4044) NOP
+Memory Two     : 1: pc(4044) NOP
+Memory One     : 1: pc(4048) OR,R7,R3,R5
+Execute Two    : 1: pc(4048) NOP
+Execute One    : 1: pc(4052) SUB,R8,R5,R7
+Decode/RF      : 1: pc(4056) EX-OR,R3,R10,R6
+Fetch          : 1: pc(4060) AND,R9,R5,R10
+
+--------------------------------
+Clock Cycle #: 20 Instructions Pushed
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 0: pc(4044) NOP
+Memory Two     : 0: pc(4048) OR,R7,R3,R5
+Memory One     : 0: pc(4048) NOP
+Execute Two    : 0: pc(4052) SUB,R8,R5,R7
+Execute One    : 0: pc(4056) EX-OR,R3,R10,R6
+Decode/RF      : 0: pc(4060) AND,R9,R5,R10
+Fetch          : 1: pc(4060) AND,R9,R5,R10
+
+--------------------------------
+Clock Cycle #: 21
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 1: pc(4044) NOP
+Memory Two     : 1: pc(4048) OR,R7,R3,R5
+Memory One     : 1: pc(4048) NOP
+Execute Two    : 1: pc(4052) SUB,R8,R5,R7
+Execute One    : 1: pc(4056) EX-OR,R3,R10,R6
+Decode/RF      : 1: pc(4060) AND,R9,R5,R10
+Fetch          : 1: pc(4064) HALT
+
+--------------------------------
+Clock Cycle #: 21 Instructions Pushed
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 0: pc(4048) OR,R7,R3,R5
+Memory Two     : 0: pc(4048) NOP
+Memory One     : 0: pc(4052) SUB,R8,R5,R7
+Execute Two    : 0: pc(4056) EX-OR,R3,R10,R6
+Execute One    : 0: pc(4060) AND,R9,R5,R10
+Decode/RF      : 0: pc(4064) HALT
+Fetch          : 1: pc(4064) HALT
+
+--------------------------------
+Clock Cycle #: 22
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 1: pc(4048) OR,R7,R3,R5
+Memory Two     : 1: pc(4048) NOP
+Memory One     : 1: pc(4052) SUB,R8,R5,R7
+Execute Two    : 1: pc(4056) EX-OR,R3,R10,R6
+Execute One    : 1: pc(4060) AND,R9,R5,R10
+Decode/RF      : 1: pc(4064) HALT
+Fetch          : 0: pc(4068) SUB,R11,R10,R3  ---> STALLED
+
+--------------------------------
+Clock Cycle #: 22 Instructions Pushed
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 0: pc(4048) NOP
+Memory Two     : 0: pc(4052) SUB,R8,R5,R7
+Memory One     : 0: pc(4056) EX-OR,R3,R10,R6
+Execute Two    : 0: pc(4060) AND,R9,R5,R10
+Execute One    : 0: pc(4064) HALT
+Decode/RF      : 0: pc(4064) NOP
+Fetch          : 0: pc(4068) SUB,R11,R10,R3  ---> STALLED
+
+--------------------------------
+Clock Cycle #: 23
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 1: pc(4048) NOP
+Memory Two     : 1: pc(4052) SUB,R8,R5,R7
+Memory One     : 1: pc(4056) EX-OR,R3,R10,R6
+Execute Two    : 1: pc(4060) AND,R9,R5,R10
+Execute One    : 1: pc(4064) HALT
+Decode/RF      : 1: pc(4064) NOP
+Fetch          : 0: pc(4068) SUB,R11,R10,R3  ---> STALLED
+
+--------------------------------
+Clock Cycle #: 23 Instructions Pushed
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 0: pc(4052) SUB,R8,R5,R7
+Memory Two     : 0: pc(4056) EX-OR,R3,R10,R6
+Memory One     : 0: pc(4060) AND,R9,R5,R10
+Execute Two    : 0: pc(4064) HALT
+Execute One    : 0: pc(4064) NOP
+Decode/RF      : 0: pc(4064) NOP
+Fetch          : 0: pc(4068) SUB,R11,R10,R3  ---> STALLED
+
+--------------------------------
+Clock Cycle #: 24
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 1: pc(4052) SUB,R8,R5,R7
+Memory Two     : 1: pc(4056) EX-OR,R3,R10,R6
+Memory One     : 1: pc(4060) AND,R9,R5,R10
+Execute Two    : 1: pc(4064) HALT
+Execute One    : 1: pc(4064) NOP
+Decode/RF      : 1: pc(4064) NOP
+Fetch          : 0: pc(4068) SUB,R11,R10,R3  ---> STALLED
+
+--------------------------------
+Clock Cycle #: 24 Instructions Pushed
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 0: pc(4056) EX-OR,R3,R10,R6
+Memory Two     : 0: pc(4060) AND,R9,R5,R10
+Memory One     : 0: pc(4064) HALT
+Execute Two    : 0: pc(4064) NOP
+Execute One    : 0: pc(4064) NOP
+Decode/RF      : 0: pc(4064) NOP
+Fetch          : 0: pc(4068) SUB,R11,R10,R3  ---> STALLED
+
+--------------------------------
+Clock Cycle #: 25
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 1: pc(4056) EX-OR,R3,R10,R6
+Memory Two     : 1: pc(4060) AND,R9,R5,R10
+Memory One     : 1: pc(4064) HALT
+Execute Two    : 1: pc(4064) NOP
+Execute One    : 1: pc(4064) NOP
+Decode/RF      : 1: pc(4064) NOP
+Fetch          : 0: pc(4068) SUB,R11,R10,R3  ---> STALLED
+
+--------------------------------
+Clock Cycle #: 25 Instructions Pushed
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 0: pc(4060) AND,R9,R5,R10
+Memory Two     : 0: pc(4064) HALT
+Memory One     : 0: pc(4064) NOP
+Execute Two    : 0: pc(4064) NOP
+Execute One    : 0: pc(4064) NOP
+Decode/RF      : 0: pc(4064) NOP
+Fetch          : 0: pc(4068) SUB,R11,R10,R3  ---> STALLED
+
+--------------------------------
+Clock Cycle #: 26
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 1: pc(4060) AND,R9,R5,R10
+Memory Two     : 1: pc(4064) HALT
+Memory One     : 1: pc(4064) NOP
+Execute Two    : 1: pc(4064) NOP
+Execute One    : 1: pc(4064) NOP
+Decode/RF      : 1: pc(4064) NOP
+Fetch          : 0: pc(4068) SUB,R11,R10,R3  ---> STALLED
+
+--------------------------------
+Clock Cycle #: 26 Instructions Pushed
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 0: pc(4064) HALT
+Memory Two     : 0: pc(4064) NOP
+Memory One     : 0: pc(4064) NOP
+Execute Two    : 0: pc(4064) NOP
+Execute One    : 0: pc(4064) NOP
+Decode/RF      : 0: pc(4064) NOP
+Fetch          : 0: pc(4068) SUB,R11,R10,R3  ---> STALLED
+
+--------------------------------
+Clock Cycle #: 27
+Stage          : Executed: Instruction
+--------------------------------
+Writeback      : 1: pc(4064) HALT
+Memory Two     : 0: pc(4064) NOP
+Memory One     : 0: pc(4064) NOP
+Execute Two    : 0: pc(4064) NOP
+Execute One    : 0: pc(4064) NOP
+Decode/RF      : 0: pc(4064) NOP
+Fetch          : 0: pc(4068) SUB,R11,R10,R3  ---> STALLED
+Simulation Stoped ....
+Instruction HALT Encountered
+Simulation Return Code 1
+============ STATE OF CPU FLAGS ============
+Falgs::  ZeroFlag, CarryFlag, OverflowFlag, InterruptFlag
+Values:: 0,     |       1,      |       0,      |       1
+============ STATE OF ARCHITECTURAL REGISTER FILE ============
+NOTE :: 0 Means Valid & 1 Means Invalid
+Registers, Values, Invalid
+R00,    |       232,    |       0
+R01,    |       00,     |       0
+R02,    |       00,     |       0
+R03,    |       312,    |       0
+R04,    |       00,     |       0
+R05,    |       00,     |       0
+R06,    |       276,    |       0
+R07,    |       276,    |       0
+R08,    |       -276,   |       0
+R09,    |       00,     |       0
+R10,    |       44,     |       0
+R11,    |       00,     |       0
+R12,    |       00,     |       0
+R13,    |       00,     |       0
+R14,    |       00,     |       0
+R15,    |       44,     |       0
+R16,    |       00,     |       0
+R17,    |       00,     |       0
+R18,    |       00,     |       0
+R19,    |       00,     |       0
+R20,    |       00,     |       0
+R21,    |       00,     |       0
+R22,    |       00,     |       0
+R23,    |       00,     |       0
+R24,    |       00,     |       0
+R25,    |       00,     |       0
+R26,    |       00,     |       0
+R27,    |       00,     |       0
+R28,    |       00,     |       0
+R29,    |       00,     |       0
+R30,    |       00,     |       0
+R31,    |       00,     |       0
+============ STATE OF DATA MEMORY ============
+Mem Location, Values
+M00,    |       00
+M01,    |       00
+M02,    |       00
+M03,    |       00
+M04,    |       00
+M05,    |       00
+M06,    |       00
+M07,    |       00
+M08,    |       00
+M09,    |       00
+M10,    |       00
+M11,    |       00
+M12,    |       00
+M13,    |       00
+M14,    |       00
+M15,    |       00
+M16,    |       00
+M17,    |       00
+M18,    |       00
+M19,    |       00
+M20,    |       00
+M21,    |       00
+M22,    |       00
+M23,    |       00
+M24,    |       00
+M25,    |       00
+M26,    |       00
+M27,    |       00
+M28,    |       00
+M29,    |       00
+M30,    |       00
+M31,    |       00
+M32,    |       00
+M33,    |       00
+M34,    |       00
+M35,    |       00
+M36,    |       00
+M37,    |       00
+M38,    |       00
+M39,    |       00
+M40,    |       00
+M41,    |       00
+M42,    |       00
+M43,    |       00
+M44,    |       00
+M45,    |       00
+M46,    |       00
+M47,    |       00
+M48,    |       276
+M49,    |       00
+M50,    |       00
+M51,    |       00
+M52,    |       00
+M53,    |       00
+M54,    |       00
+M55,    |       00
+M56,    |       00
+M57,    |       00
+M58,    |       00
+M59,    |       00
+M60,    |       00
+M61,    |       00
+M62,    |       00
+M63,    |       00
+M64,    |       00
+M65,    |       00
+M66,    |       00
+M67,    |       00
+M68,    |       00
+M69,    |       00
+M70,    |       00
+M71,    |       00
+M72,    |       00
+M73,    |       00
+M74,    |       00
+M75,    |       00
+M76,    |       00
+M77,    |       00
+M78,    |       00
+M79,    |       00
+M80,    |       00
+M81,    |       00
+M82,    |       00
+M83,    |       00
+M84,    |       00
+M85,    |       00
+M86,    |       00
+M87,    |       00
+M88,    |       00
+M89,    |       00
+M90,    |       00
+M91,    |       00
+M92,    |       00
+M93,    |       00
+M94,    |       00
+M95,    |       00
+M96,    |       00
+M97,    |       00
+M98,    |       00
+M99,    |       00
+
+Press Any Key to Exit Simulation
