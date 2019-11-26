@@ -21,7 +21,6 @@ typedef struct APEX_IQ {
 	int inst_ptr;				// indicate pc value of instruction
 	int literal;				// hold literal value
 	int rd;							// holds desc reg tag
-	int rd_value;			// holds src1 reg value
 	int rs1;						// holds src1 reg tag
 	int rs1_ready;			// indicate if src1 is ready
 	int rs1_value;			// holds src1 reg value

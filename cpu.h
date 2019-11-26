@@ -104,12 +104,12 @@ typedef struct CPU_Stage {
 	int imm;          // Literal Value
 	int rd_value;     // Destination Register Value
 	int rs1_value;    // Source-1 Register Value
+	int rs1_valid;    // Source-1 Register Value Valid
 	int rs2_value;    // Source-2 Register Value
+	int rs2_valid;    // Source-2 Register Value Valid
 	int buffer;       // Latch to hold some value (currently used to hold literal value from decode)
-	int flag_forward; // Secondary buffer to hold value (used for flags instruction)
 	int mem_address;  // Computed Memory Address
 	int inst_type;		// instruction type
-	int busy;         // Flag to indicate, stage is performing some action
 	int stalled;      // Flag to indicate, stage is stalled
 	int executed;     // Flag to indicate, stage has executed or not
 	int empty;        // Flag to indicate, stage is empty
