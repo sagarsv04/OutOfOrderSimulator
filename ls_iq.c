@@ -77,14 +77,14 @@ int add_issue_queue_entry(APEX_IQ* issue_queue, CPU_Stage* stage) {
 int update_issue_queue_entry(APEX_IQ* issue_queue, CPU_Stage* stage) {
 	// this is updating values from func unit to any entry which is waiting in queue
 	// array to hold respective reg update positions
+	int rs1_position[IQ_SIZE] = {-1}; // these can use to see where values got updated
+	int rs2_position[IQ_SIZE] = {-1};
+	int rs1_pos_sum = 0;
+	int rs2_pos_sum = 0;
 	if (!stage->executed) {
     return FAILURE;
   }
 	else {
-		int rs1_position[IQ_SIZE] = {-1}; // these can use to see where values got updated
-		int rs2_position[IQ_SIZE] = {-1};
-		int rs1_pos_sum = 0
-		int rs2_pos_sum = 0
 		// for now loop through entire issue_queue and check
 		for (int i=0; i<IQ_SIZE; i++) {
 			// check only alloted entries
@@ -92,13 +92,13 @@ int update_issue_queue_entry(APEX_IQ* issue_queue, CPU_Stage* stage) {
 				// first check rd ie flow and output dependencies
 				if (stage->rd == issue_queue[i].rs1) {
 					issue_queue[i].rs1_value = stage->rd_value;
-					issue_queue[i].rs1_ready = stage->rd_valid;
+					issue_queue[i].rs1_ready = 1;
 					rs1_position[i] = i;
 					rs1_pos_sum += 1;
 				}
 				if (stage->rd == issue_queue[i].rs2) {
 					issue_queue[i].rs2_value = stage->rd_value;
-					issue_queue[i].rs2_ready = stage->rd_valid;
+					issue_queue[i].rs2_ready = 1;
 					rs2_position[i] = i;
 					rs2_pos_sum += 1;
 				}
@@ -116,7 +116,7 @@ int get_issue_queue_index_to_issue(APEX_IQ* issue_queue, int* issue_index) {
 	// get all the index of issue_queue entries
 	// in cpu loop through index and issue instructions to respective func units
 	// int issue_index[IQ_SIZE] = {-1}; // these can use to see where values got updated
-	int index_sum = -1*IQ_SIZE
+	int index_sum = 0;
 	for (int i=0; i<IQ_SIZE; i++) {
 		// check only alloted entries
 		if (issue_queue[i].status == 1) {

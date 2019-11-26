@@ -67,7 +67,6 @@ APEX_CPU* APEX_cpu_init(const char* filename) {
 
 	/* Make all stages busy except Fetch stage, initally to start the pipeline */
 	for (int i = 1; i < NUM_STAGES; ++i) {
-		cpu->stage[i].busy = 1;
 		cpu->stage[i].empty = 1;
 	}
 
@@ -131,9 +130,6 @@ static void print_stage_status(CPU_Stage* stage) {
 	}
 	else if (stage->stalled) {
 		printf(" ---> STALLED ");
-	}
-	else if (stage->busy){
-		printf(" ---> BUSY ");
 	}
 }
 
@@ -951,11 +947,9 @@ int decode(APEX_CPU* cpu) {
 			case BZ:  // ************************************* BZ ************************************* //
 				// read literal values
 				stage->buffer = stage->imm; // keeping literal value in buffer to jump in exe stage
-				stage->flag_forward = 0;
 				if ((forwarding.status)&&(!previous_arithmetic_check(cpu, WB))) {
 					// if previous was arithmatic instruction than stall
 					// keep DF and Fetch Stage in stall if regs_invalid is set
-					stage->flag_forward = 1;
 					stage->rd_value = cpu->stage[WB].rd_value;
 					cpu->stage[DRF].stalled = 0;
 					cpu->stage[F].stalled = 0;
@@ -969,11 +963,9 @@ int decode(APEX_CPU* cpu) {
 			case BNZ:  // ************************************* BNZ ************************************* //
 				// read literal values
 				stage->buffer = stage->imm; // keeping literal value in buffer to jump in exe stage
-				stage->flag_forward = 0;
 				if ((forwarding.status)&&(!previous_arithmetic_check(cpu, WB))) {
 					// if previous was arithmatic instruction than stall
 					// keep DF and Fetch Stage in stall if regs_invalid is set
-					stage->flag_forward = 1;
 					stage->rd_value = cpu->stage[WB].rd_value;
 					cpu->stage[DRF].stalled = 0;
 					cpu->stage[F].stalled = 0;
@@ -1223,7 +1215,7 @@ int int_two_stage(APEX_CPU* cpu) {
 		else if (strcmp(stage->opcode, "BZ") == 0) {
 			// load buffer value to mem_address
 			stage->mem_address = stage->buffer;
-			if ((stage->flag_forward)&&(stage->rd_value==0)) {
+			if (stage->rd_value==0) {
 				// check address validity, pc-add % 4 should be 0
 				if (((stage->pc + stage->mem_address)%4 == 0)&&!((stage->pc + stage->mem_address) < 4000)) {
 					// reset status of rd in exe_one stage
@@ -1249,7 +1241,7 @@ int int_two_stage(APEX_CPU* cpu) {
 		else if (strcmp(stage->opcode, "BNZ") == 0) {
 			// load buffer value to mem_address
 			stage->mem_address = stage->buffer;
-			if ((stage->flag_forward)&&(stage->rd_value!=0)) {
+			if (stage->rd_value!=0) {
 				// check address validity, pc-add % 4 should be 0
 				if (((stage->pc + stage->mem_address)%4 == 0)&&!((stage->pc + stage->mem_address) < 4000)) {
 					// reset status of rd in exe_one stage
@@ -1442,7 +1434,7 @@ int memory_two_stage(APEX_CPU* cpu) {
 
 	CPU_Stage* stage = &cpu->stage[MEM_TWO];
 	stage->executed = 0;
-	if (!stage->busy && !stage->stalled) {
+	if (!stage->stalled) {
 
 		/* Store */
 		if (strcmp(stage->opcode, "STORE") == 0) {
@@ -1564,7 +1556,7 @@ int writeback(APEX_CPU* cpu) {
 
 	CPU_Stage* stage = &cpu->stage[WB];
 	stage->executed = 0;
-	if (!stage->busy && !stage->stalled) {
+	if (!stage->stalled) {
 
 		/* Store */
 		if (strcmp(stage->opcode, "STORE") == 0) {

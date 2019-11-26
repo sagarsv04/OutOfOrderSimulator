@@ -65,13 +65,13 @@ int add_reorder_buffer_entry(APEX_ROB* rob, APEX_IQ* iq_entry) {
 
 int update_reorder_buffer_entry_data(APEX_ROB* rob, CPU_Stage* stage) {
   // check the stage data and update the rob data value
+  int update_position = -1;
   if (!stage->executed) {
     return FAILURE;
   }
   else {
-    int update_position = -1;
-     // for now loop through entire rob and check
-     // a better way would be checking between commit_ptr and issue_ptr
+    // for now loop through entire rob and check
+    // a better way would be checking between commit_ptr and issue_ptr
   	for (int i=0; i<ROB_SIZE; i++) {
       // check only alloted entries
   		if (rob->rob_entry[i].status == 1) {
@@ -122,8 +122,8 @@ int commit_reorder_buffer_entry(APEX_ROB* rob, APEX_CPU* cpu) {
     rob->rob_entry[rob->commit_ptr].exception = 0;
     rob->rob_entry[rob->commit_ptr].valid = 0;
     // decrement buffer_length and increment commit_ptr
-    buffer_length -= 1;
-    commit_ptr += 1;
+    rob->buffer_length -= 1;
+    rob->commit_ptr += 1;
   }
   return SUCCESS;
 }
