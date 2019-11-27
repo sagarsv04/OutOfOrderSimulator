@@ -7,7 +7,10 @@
  *  Author :
  *  Sagar Vishwakarma (svishwa2@binghamton.edu)
  *  State University of New York, Binghamton
- */
+*/
+
+#include "cpu.h"
+
 
 #define IQ_SIZE 8
 
@@ -46,8 +49,14 @@ typedef struct APEX_LSQ {
 } APEX_LSQ;
 
 
+APEX_IQ* init_issue_queue();
+void deinit_issue_queue(APEX_IQ* issue_queue);
+int add_issue_queue_entry(APEX_IQ* issue_queue, CPU_Stage* stage);
+int update_issue_queue_entry(APEX_IQ* issue_queue, CPU_Stage* stage);
+int get_issue_queue_index_to_issue(APEX_IQ* issue_queue, int* issue_index);
 
+APEX_LSQ* init_ls_queue();
+void deinit_ls_queue(APEX_LSQ* ls_queue);
+int add_ls_queue_entry(APEX_LSQ* ls_queue, APEX_IQ* issue_queue);
 
-
-
- #endif
+#endif

@@ -36,7 +36,7 @@ int main(int argc, char const* argv[]) {
         // show everything
         ret = APEX_cpu_run(cpu, num_cycle);
         if (ret == SUCCESS) {
-          printf("(apex) >> Simulation Complete");
+          printf("Simulation Complete\n");
         }
         else {
           printf("Simulation Return Code %d\n",ret);
@@ -50,7 +50,7 @@ int main(int argc, char const* argv[]) {
         // show only stages
         ret = APEX_cpu_run(cpu, num_cycle);
         if (ret == SUCCESS) {
-          printf("(apex) >> Simulation Complete");
+          printf("Simulation Complete\n");
         }
         else {
           printf("Simulation Return Code %d\n",ret);
@@ -63,7 +63,7 @@ int main(int argc, char const* argv[]) {
     else {
       fprintf(stderr, "Invalid parameters passed !!!\n");
       if (!num_cycle) {
-        fprintf(stderr, "Number of Cycles cannot be 0\n", argv[0]);
+        fprintf(stderr, "Number of Cycles cannot be 0\n");
       }
       fprintf(stderr, "APEX_Help : Usage %s <input_file> <func(eg: simulate Or display)> <num_cycle>\n", argv[0]);
       exit(1);

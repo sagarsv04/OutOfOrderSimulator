@@ -9,8 +9,6 @@
  *  State University of New York, Binghamton
  */
 
-#include "rob.h"
-#include "ls_iq.h"
 
 #define RUNNING_IN_WINDOWS 0
 
@@ -75,14 +73,6 @@ enum {
 	NOP
 };
 
-/* Format of an APEX Forward mechanism  */
-typedef struct APEX_Forward {
-	int status;
-	int rd_from;
-	int rs1_from;     // CPU stage from which rs2 can be forwarded
-	int rs2_from;
-	int unstall;
-} APEX_Forward;
 
 /* Format of an APEX instruction  */
 typedef struct APEX_Instruction {
@@ -128,10 +118,6 @@ typedef struct APEX_CPU {
 	int code_memory_size;
 	int data_memory[DATA_MEMORY_SIZE];		// data cache memory
 	int ins_completed;		// instruction completed count
-	APEX_IQ issue_queue[IQ_SIZE]; 		// array of issue queue entries
-	APEX_LSQ load_store_queue[LSQ_SIZE]; 		// array of load store queue entries
-	APEX_ROB reorder_buffer; 		// array of load store queue entries
-
 } APEX_CPU;
 
 

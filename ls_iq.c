@@ -43,6 +43,9 @@ APEX_IQ* init_issue_queue() {
 	return issue_queue;
 }
 
+void deinit_issue_queue(APEX_IQ* issue_queue) {
+	free(issue_queue);
+}
 
 int add_issue_queue_entry(APEX_IQ* issue_queue, CPU_Stage* stage) {
 	// if instruction sucessfully added then only pass the instruction to function units
@@ -77,8 +80,8 @@ int add_issue_queue_entry(APEX_IQ* issue_queue, CPU_Stage* stage) {
 int update_issue_queue_entry(APEX_IQ* issue_queue, CPU_Stage* stage) {
 	// this is updating values from func unit to any entry which is waiting in queue
 	// array to hold respective reg update positions
-	int rs1_position[IQ_SIZE] = {-1}; // these can use to see where values got updated
-	int rs2_position[IQ_SIZE] = {-1};
+	// int rs1_position[IQ_SIZE] = {-1}; // these can use to see where values got updated
+	// int rs2_position[IQ_SIZE] = {-1};
 	int rs1_pos_sum = 0;
 	int rs2_pos_sum = 0;
 	if (!stage->executed) {
@@ -93,13 +96,13 @@ int update_issue_queue_entry(APEX_IQ* issue_queue, CPU_Stage* stage) {
 				if (stage->rd == issue_queue[i].rs1) {
 					issue_queue[i].rs1_value = stage->rd_value;
 					issue_queue[i].rs1_ready = 1;
-					rs1_position[i] = i;
+					// rs1_position[i] = i;
 					rs1_pos_sum += 1;
 				}
 				if (stage->rd == issue_queue[i].rs2) {
 					issue_queue[i].rs2_value = stage->rd_value;
 					issue_queue[i].rs2_ready = 1;
-					rs2_position[i] = i;
+					// rs2_position[i] = i;
 					rs2_pos_sum += 1;
 				}
 			}
@@ -153,6 +156,9 @@ APEX_LSQ* init_ls_queue() {
 	return ls_queue;
 }
 
+void deinit_ls_queue(APEX_LSQ* ls_queue) {
+	free(ls_queue);
+}
 
 
 int add_ls_queue_entry(APEX_LSQ* ls_queue, APEX_IQ* issue_queue) {

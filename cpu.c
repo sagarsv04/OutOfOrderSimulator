@@ -12,6 +12,9 @@
 #include <limits.h>
 
 #include "cpu.h"
+#include "rob.h"
+#include "ls_iq.h"
+#include "forwarding.h"
 
 /* Set this flag to 1 to enable debug messages */
 #define ENABLE_DEBUG_MESSAGES 1
@@ -42,10 +45,6 @@ APEX_CPU* APEX_cpu_init(const char* filename) {
 	memset(cpu->stage, 0, sizeof(CPU_Stage) * NUM_STAGES); // all values in stage struct of type CPU_Stage like pc, rs1, etc are set to 0
 	memset(cpu->data_memory, 0, sizeof(int) * DATA_MEMORY_SIZE); // from 4000 to 4095 there will be garbage values in data_memory array
 	memset(cpu->flags, 0, sizeof(int) * NUM_FLAG); // all flag values in cpu are set to 0
-
-	memset(cpu->issue_queue, 0, sizeof(APEX_IQ) * IQ_SIZE); // all issue queue values in cpu are set to 0
-	memset(cpu->load_store_queue, 0, sizeof(APEX_LSQ) * LSQ_SIZE); // all load store queue values in cpu are set to 0
-	memset(cpu->reorder_buffer.rob_entry, 0, sizeof(APEX_ROB_ENTRY) * ROB_SIZE); // all rob values in cpu are set to 0
 
 	/* Parse input file and create code memory */
 	cpu->code_memory = create_code_memory(filename, &cpu->code_memory_size);
@@ -144,13 +143,13 @@ static void print_stage_content(char* name, CPU_Stage* stage) {
 void print_cpu_content(APEX_CPU* cpu) {
 	// Print function which prints contents of cpu memory
 	if (ENABLE_REG_MEM_STATUS_PRINT) {
-		printf("============ STATE OF CPU FLAGS ============\n");
+		printf("\n============ STATE OF CPU FLAGS ============\n");
 		// print all Flags
 		printf("Falgs::  ZeroFlag, CarryFlag, OverflowFlag, InterruptFlag\n");
 		printf("Values:: %d,\t|\t%d,\t|\t%d,\t|\t%d\n", cpu->flags[ZF],cpu->flags[CF],cpu->flags[OF],cpu->flags[IF]);
 
 		// print all regs along with valid bits
-		printf("============ STATE OF ARCHITECTURAL REGISTER FILE ============\n");
+		printf("\n============ STATE OF ARCHITECTURAL REGISTER FILE ============\n");
 		printf("NOTE :: 0 Means Valid & 1 Means Invalid\n");
 		printf("Registers, Values, Invalid\n");
 		for (int i=0;i<REGISTER_FILE_SIZE;i++) {
@@ -158,7 +157,7 @@ void print_cpu_content(APEX_CPU* cpu) {
 		}
 
 		// print 100 memory location
-		printf("============ STATE OF DATA MEMORY ============\n");
+		printf("\n============ STATE OF DATA MEMORY ============\n");
 		printf("Mem Location, Values\n");
 		for (int i=0;i<100;i++) {
 			printf("M%02d,\t|\t%02d\n", i, cpu->data_memory[i]);
@@ -210,35 +209,6 @@ static void set_reg_status(APEX_CPU* cpu, int reg_number, int status) {
 	}
 }
 
-static void add_bubble_to_stage(APEX_CPU* cpu, int stage_index, int flushed) {
-	// Add bubble to cpu stage
-	 if (flushed){
-			 strcpy(cpu->stage[stage_index].opcode, "NOP"); // add a Bubble
-			 cpu->code_memory_size = cpu->code_memory_size + 1;
-			 cpu->stage[stage_index].empty = 1;
-			 // this is because while checking for forwarding we dont look if EX_TWO or MEM_TWO has NOP
-			 // we simply compare rd value to know if this register is wat we are looking for
-			 // assuming no source register will be negative
-			 cpu->stage[stage_index].rd = -99;
-	 }
-	if ((stage_index > F) && (stage_index < NUM_STAGES) && !(flushed)) {
-		// No adding Bubble in Fetch and WB stage
-		if (cpu->stage[stage_index].executed) {
-			strcpy(cpu->stage[stage_index].opcode, "NOP"); // add a Bubble
-			cpu->code_memory_size = cpu->code_memory_size + 1;
-			// this is because while checking for forwarding we dont look if EX_TWO or MEM_TWO has NOP
-			// we simply compare rd value to know if this register is wat we are looking for
-			// assuming no source register will be negative
-			cpu->stage[stage_index].rd = -99;
-		}
-		else {
-			; // Nothing let it execute its current instruction
-		}
-	}
-	else {
-		;
-	}
-}
 
 int previous_arithmetic_check(APEX_CPU* cpu, int func_unit) {
 
@@ -265,139 +235,7 @@ int previous_arithmetic_check(APEX_CPU* cpu, int func_unit) {
 	return status;
 }
 
-/*
- * ########################################## forwarding Check ##########################################
- */
-APEX_Forward get_cpu_forwarding_status(APEX_CPU* cpu, CPU_Stage* stage) {
-	// depending on instruction check if forwarding can happen
-	APEX_Forward forwarding;
-	forwarding.status = 0;
-	forwarding.unstall = 0;
-	forwarding.rd_from = -1;
-	forwarding.rs1_from = -1;
-	forwarding.rs2_from = -1;
-	// check rd value is computed or not
-	// if((cpu->stage[EX_TWO].executed) || (cpu->stage[MEM_TWO].executed)) {
-	// 	if ((strcmp(stage->opcode, "BZ") != 0)&&(strcmp(stage->opcode, "BNZ") != 0)) {
-	// 		// check current rs1 with EX_TWO rd
-	// 		if ((stage->inst_type != HALT) && (stage->inst_type != NOP) && (stage->inst_type != 0) {
-	// 				// firts check forwarding from EX_TWO, also check if docode rs1 is also not presend in EX_ONE
-	// 				if ((stage->rs1 == cpu->stage[EX_TWO].rd)&&(cpu->stage[EX_TWO].executed)&&(stage->rs1 != cpu->stage[EX_ONE].rd)){
-	// 					// forwarding can be done
-	// 					if (!(strcmp(cpu->stage[EX_TWO].opcode, "LOAD") == 0)) {
-	// 						// dont forward as load rd values only gets filled by memory_two state
-	// 						forwarding.rs1_from = EX_TWO;
-	// 					}
-	// 				}
-	// 				// also check if docode rs1 is also not presend in MEM_ONE
-	// 				else if ((stage->rs1 == cpu->stage[MEM_ONE].rd)&&(cpu->stage[MEM_ONE].executed)&&(stage->rs1 != cpu->stage[EX_TWO].rd)) {
-	// 					// forwarding can be done
-	// 					forwarding.rs1_from = MEM_ONE;
-	// 				}
-	// 				// also check if docode rs1 is also not presend in MEM_TWO
-	// 				else if ((stage->rs1 == cpu->stage[MEM_TWO].rd)&&(cpu->stage[MEM_TWO].executed)&&(stage->rs1 != cpu->stage[MEM_ONE].rd)) {
-	// 					// forwarding can be done
-	// 					forwarding.rs1_from = MEM_TWO;
-	// 				}
-	// 				// cahnge status of forwarding
-	// 				if (forwarding.rs1_from > 0) {
-	// 					forwarding.status = 1;
-	// 				}
-	// 				if (!get_reg_status(cpu, stage->rs1)) {
-	// 					forwarding.unstall = 1;
-	// 				}
-	// 		}
-	// 		if ((stage->inst_type == STR) || (stage->inst_type == LDR) ||
-	// 			(stage->inst_type == ADD) || (stage->inst_type == SUB) ||
-	// 			(stage->inst_type == MUL) || (stage->inst_type == DIV) ||
-	// 			(stage->inst_type == AND) || (stage->inst_type == OR) || (stage->inst_type == EX-OR)) {
-	// 			// firts check forwarding from EX_TWO
-	// 			// also check if docode rs2 is also not presend in EX_ONE
-	// 			if ((stage->rs2 == cpu->stage[EX_TWO].rd)&&(cpu->stage[EX_TWO].executed)&&(stage->rs2 != cpu->stage[EX_ONE].rd)) {
-	// 				// forwarding can be done
-	// 				forwarding.rs2_from = EX_TWO;
-	// 			}
-	// 			// also check if docode rs1 is also not presend in MEM_ONE
-	// 			else if ((stage->rs2 == cpu->stage[MEM_ONE].rd)&&(cpu->stage[MEM_ONE].executed)&&(stage->rs2 != cpu->stage[EX_TWO].rd)) {
-	// 				// forwarding can be done
-	// 				forwarding.rs2_from = MEM_ONE;
-	// 			}
-	// 			// also check if docode rs2 is also not presend in MEM_TWO
-	// 			else if ((stage->rs2 == cpu->stage[MEM_TWO].rd)&&(cpu->stage[MEM_TWO].executed)&&(stage->rs2 != cpu->stage[MEM_ONE].rd)) {
-	// 				// forwarding can be done
-	// 				forwarding.rs2_from = MEM_TWO;
-	// 			}
-	//
-	// 			if ((forwarding.rs1_from > 0)&&(forwarding.rs2_from > 0)) {
-	// 				forwarding.status = 1;
-	// 			}
-	// 			else {
-	// 				forwarding.status = 0;
-	// 			}
-	//
-	// 			if ((!get_reg_status(cpu, stage->rs1)) || (!get_reg_status(cpu, stage->rs2))) {
-	// 				forwarding.unstall = 1;
-	// 			}
-	// 			else {
-	// 				forwarding.unstall = 0;
-	// 			}
-	// 		}
-	// 		if ((stage->inst_type == STORE) || (stage->inst_type == STR)) {
-	// 			// firts check forwarding from EX_TWO
-	// 			// also check if docode rd is also not presend in EX_ONE
-	// 			if ((stage->rd == cpu->stage[EX_TWO].rd)&&(cpu->stage[EX_TWO].executed)&&(stage->rd != cpu->stage[EX_ONE].rd)) {
-	// 				// forwarding can be done
-	// 				forwarding.rd_from = EX_TWO;
-	// 			}
-	// 			// also check if docode rs1 is also not presend in MEM_ONE
-	// 			else if ((stage->rs2 == cpu->stage[MEM_ONE].rd)&&(cpu->stage[MEM_ONE].executed)&&(stage->rs2 != cpu->stage[EX_TWO].rd)) {
-	// 				// forwarding can be done
-	// 				forwarding.rs2_from = MEM_ONE;
-	// 			}
-	// 			// also check if docode rd is also not presend in MEM_TWO
-	// 			else if ((stage->rd == cpu->stage[MEM_TWO].rd)&&(cpu->stage[MEM_TWO].executed)&&(stage->rd != cpu->stage[MEM_ONE].rd)) {
-	// 				// forwarding can be done
-	// 				forwarding.rd_from = MEM_TWO;
-	// 			}
-	//
-	// 			if ((forwarding.rd_from > 0)&&(forwarding.rs1_from > 0)&&(forwarding.rs2_from > 0)) {
-	// 				forwarding.status = 1;
-	// 			}
-	// 			else {
-	// 				forwarding.status = 0;
-	// 			}
-	// 			if ((!get_reg_status(cpu, stage->rd)) || (!get_reg_status(cpu, stage->rs1)) || (!get_reg_status(cpu, stage->rs2))) {
-	// 				forwarding.unstall = 1;
-	// 			}
-	// 			else {
-	// 				forwarding.unstall = 0;
-	// 			}
-	// 		}
-	// 	}
-	// 	else {
-	// 		if (!((strcmp(cpu->stage[EX_ONE].opcode, "ADD") == 0) ||
-	// 				(strcmp(cpu->stage[EX_ONE].opcode, "ADDL") == 0) ||
-	// 				(strcmp(cpu->stage[EX_ONE].opcode, "SUB") == 0) ||
-	// 				(strcmp(cpu->stage[EX_ONE].opcode, "SUBL") == 0) ||
-	// 				(strcmp(cpu->stage[EX_ONE].opcode, "MUL") == 0) ||
-	// 				(strcmp(cpu->stage[EX_TWO].opcode, "DIV") == 0))
-	// 				&&
-	// 				((strcmp(cpu->stage[EX_TWO].opcode, "ADD") == 0) ||
-	// 				(strcmp(cpu->stage[EX_TWO].opcode, "ADDL") == 0) ||
-	// 				(strcmp(cpu->stage[EX_TWO].opcode, "SUB") == 0) ||
-	// 				(strcmp(cpu->stage[EX_TWO].opcode, "SUBL") == 0) ||
-	// 				(strcmp(cpu->stage[EX_TWO].opcode, "MUL") == 0) ||
-	// 				(strcmp(cpu->stage[EX_TWO].opcode, "DIV") == 0))) {
-	//
-	// 			if (cpu->stage[EX_TWO].executed) {
-	// 				// forwarding can be done
-	// 				forwarding.status = 1;
-	// 			}
-	// 		}
-	// 	}
-	// }
-	return forwarding;
-}
+
 
 /*
  * ########################################## Fetch Stage ##########################################
@@ -465,7 +303,8 @@ int decode(APEX_CPU* cpu) {
 	CPU_Stage* stage = &cpu->stage[DRF];
 	stage->executed = 0;
 	// decode stage only has power to stall itself and Fetch stage
-	APEX_Forward forwarding = get_cpu_forwarding_status(cpu, stage);
+	APEX_Forward forwarding; // =
+	forwarding = get_cpu_forwarding_status(cpu, stage);
 	if ((!stage->stalled)||(forwarding.unstall)) {
 		/* Read data from register file for store */
 		switch(stage->inst_type) {
@@ -1835,19 +1674,19 @@ int writeback(APEX_CPU* cpu) {
 }
 
 int issue_queue(APEX_CPU* cpu){
-	;
+	return 0;
 }
 
 int ls_queue(APEX_CPU* cpu) {
-	;
+	return 0;
 }
 
 int cpu_execute(APEX_CPU* cpu) {
-	;
+	return 0;
 }
 
 int rob_commit(APEX_CPU* cpu) {
-	;
+	return 0;
 }
 
 
@@ -1907,7 +1746,9 @@ int APEX_cpu_run(APEX_CPU* cpu, int num_cycle) {
 
 		/* Requested number of cycle committed, so pause and exit */
 		if ((num_cycle>0)&&(cpu->clock == num_cycle)) {
-			printf("Requested %d Cycle Completed\n", num_cycle);
+			printf("\n--------------------------------\n");
+			printf("Requested %d Cycle Completed", num_cycle);
+			printf("\n--------------------------------\n");
 			break;
 		}
 		else {
@@ -1922,16 +1763,16 @@ int APEX_cpu_run(APEX_CPU* cpu, int num_cycle) {
 
 			int stage_ret = 0;
 			stage_ret = fetch(cpu); // fetch inst from code memory
-			stage_ret = decode(cpu); // decode will have rename and dispatch func call inside
-			stage_ret = issue_queue(cpu); // issue will have issue func call inside
-			// issue will issue load/store to LSQ and rob, then lsq will send inst to mem
-			// issue will issue other inst to FU and rob
-			stage_ret = ls_queue(cpu); // lsq will dispatch inst to mem
-			stage_ret = cpu_execute(cpu); // cpu execute will hav diff FU calls
-			stage_ret = rob_commit(cpu); // rob to commit inst executed in FU
-
-			// why we are executing from behind ??
-			stage_ret = writeback(cpu);
+			// stage_ret = decode(cpu); // decode will have rename and dispatch func call inside
+			// stage_ret = issue_queue(cpu); // issue will have issue func call inside
+			// // issue will issue load/store to LSQ and rob, then lsq will send inst to mem
+			// // issue will issue other inst to FU and rob
+			// stage_ret = ls_queue(cpu); // lsq will dispatch inst to mem
+			// stage_ret = cpu_execute(cpu); // cpu execute will hav diff FU calls
+			// stage_ret = rob_commit(cpu); // rob to commit inst executed in FU
+			//
+			// // why we are executing from behind ??
+			// stage_ret = writeback(cpu);
 			// if ((stage_ret == HALT) || (stage_ret == EMPTY)) {
 			// 	if (ENABLE_DEBUG_MESSAGES) {
 			// 		print_stage_content("Memory Two", &cpu->stage[MEM_TWO]);
@@ -1958,9 +1799,9 @@ int APEX_cpu_run(APEX_CPU* cpu, int num_cycle) {
 			// stage_ret = execute_one(cpu);
 			// stage_ret = decode(cpu);
 			// stage_ret = fetch(cpu);
-			// if ((stage_ret!=HALT)&&(stage_ret!=SUCCESS)) {
-			// 	ret = stage_ret;
-			// }
+			if ((stage_ret!=HALT)&&(stage_ret!=SUCCESS)) {
+				ret = stage_ret;
+			}
 			// push_stages(cpu);
 		}
 	}
