@@ -59,4 +59,6 @@ APEX_LSQ* init_ls_queue();
 void deinit_ls_queue(APEX_LSQ* ls_queue);
 int add_ls_queue_entry(APEX_LSQ* ls_queue, APEX_IQ* issue_queue);
 
+void print_ls_iq_content(APEX_LSQ* ls_queue, APEX_IQ* issue_queue);
+
 #endif

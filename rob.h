@@ -50,4 +50,6 @@ int add_reorder_buffer_entry(APEX_ROB* rob, APEX_IQ* iq_entry);
 int update_reorder_buffer_entry_data(APEX_ROB* rob, CPU_Stage* stage);
 int commit_reorder_buffer_entry(APEX_ROB* rob, APEX_CPU* cpu);
 
+void print_rob_rename_content(APEX_ROB* rob, APEX_RENAME_TABLE* rename_table);
+
  #endif

@@ -146,3 +146,23 @@ int commit_reorder_buffer_entry(APEX_ROB* rob, APEX_CPU* cpu) {
 	}
 	return SUCCESS;
 }
+
+
+void print_rob_rename_content(APEX_ROB* rob, APEX_RENAME_TABLE* rename_table) {
+
+	if (ENABLE_REG_MEM_STATUS_PRINT) {
+		printf("\n============ STATE OF REORDER BUFFER ============\n");
+		printf("ROB Buffer Length: %d, Commit Pointer: %d, Issue Pointer: %d\n", rob->buffer_length, rob->commit_ptr, rob->issue_ptr);
+		printf("Index, Status, Type, Rd-value, Exception, Valid\n");
+		for (int i=0;i<ROB_SIZE;i++) {
+			printf("%02d\t|\t%d\t|\t%d\t|\tR%02d-%d\t|\t%d\t|\t%d\n",
+		 					i, rob->rob_entry[i].status, rob->rob_entry[i].inst_type, rob->rob_entry[i].rd, rob->rob_entry[i].rd_value,
+							rob->rob_entry[i].exception, rob->rob_entry[i].valid);
+		}
+		printf("\n============ STATE OF RENAME ADDR TABLE ============\n");
+		printf("Index, Tag, Valid\n");
+		for (int i=0;i<RENAME_TABLE_SIZE;i++) {
+			printf("%02d\t|\t%02d\t|\t%d\n", i, rename_table[i].rob_tag, rename_table[i].tag_valid);
+		}
+	}
+}

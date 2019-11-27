@@ -140,21 +140,21 @@ void print_cpu_content(APEX_CPU* cpu) {
 		printf("\n============ STATE OF CPU FLAGS ============\n");
 		// print all Flags
 		printf("Falgs::  ZeroFlag, CarryFlag, OverflowFlag, InterruptFlag\n");
-		printf("Values:: %d,\t|\t%d,\t|\t%d,\t|\t%d\n", cpu->flags[ZF],cpu->flags[CF],cpu->flags[OF],cpu->flags[IF]);
+		printf("Values:: %d\t|\t%d\t|\t%d\t|\t%d\n", cpu->flags[ZF],cpu->flags[CF],cpu->flags[OF],cpu->flags[IF]);
 
 		// print all regs along with valid bits
 		printf("\n============ STATE OF ARCHITECTURAL REGISTER FILE ============\n");
 		printf("NOTE :: 0 Means Valid & 1 Means Invalid\n");
 		printf("Registers, Values, Invalid\n");
 		for (int i=0;i<REGISTER_FILE_SIZE;i++) {
-			printf("R%02d,\t|\t%02d,\t|\t%d\n", i, cpu->regs[i], cpu->regs_invalid[i]);
+			printf("R%02d\t|\t%02d\t|\t%d\n", i, cpu->regs[i], cpu->regs_invalid[i]);
 		}
 
 		// print 100 memory location
 		printf("\n============ STATE OF DATA MEMORY ============\n");
 		printf("Mem Location, Values\n");
 		for (int i=0;i<100;i++) {
-			printf("M%02d,\t|\t%02d\n", i, cpu->data_memory[i]);
+			printf("M%02d\t|\t%02d\n", i, cpu->data_memory[i]);
 		}
 		printf("\n");
 	}
@@ -1684,6 +1684,7 @@ int APEX_cpu_run(APEX_CPU* cpu, int num_cycle) {
 			int stage_ret = 0;
 			stage_ret = fetch(cpu); // fetch inst from code memory
 			stage_ret = decode(cpu); // decode will have rename and dispatch func call inside
+
 			// stage_ret = issue_queue(cpu); // issue will have issue func call inside
 			// // issue will issue load/store to LSQ and rob, then lsq will send inst to mem
 			// // issue will issue other inst to FU and rob

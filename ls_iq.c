@@ -188,3 +188,25 @@ int add_ls_queue_entry(APEX_LSQ* ls_queue, APEX_IQ* issue_queue) {
 	}
 	return SUCCESS;
 }
+
+
+void print_ls_iq_content(APEX_LSQ* ls_queue, APEX_IQ* issue_queue) {
+
+	if (ENABLE_REG_MEM_STATUS_PRINT) {
+		printf("\n============ STATE OF ISSUE QUEUE ============\n");
+		printf("Index, Status, Type, Rd-value, Rs1-value-ready, Rs2-value-ready, LSQ Index\n");
+		for (int i=0;i<IQ_SIZE;i++) {
+			printf("%02d\t|\t%d\t|\t%d\t|\tR%02d-%d\t|\tR%02d-%d-%d\t|\tR%02d-%d-%d\t|\t%02d\n",
+		 					i, issue_queue[i].status, issue_queue[i].inst_type, issue_queue[i].rd, issue_queue[i].rd_value,
+							issue_queue[i].rs1, issue_queue[i].rs1_value, issue_queue[i].rs1_ready,
+							issue_queue[i].rs2, issue_queue[i].rs2_value, issue_queue[i].rs2_ready, issue_queue[i].lsq_index);
+		}
+		printf("\n============ STATE OF LOAD STORE QUEUE ============\n");
+		printf("Index, Status, Type, Mem Valid, Data Ready, Rd-value, Rs1-value, Rs2-value\n");
+		for (int i=0;i<LSQ_SIZE;i++) {
+			printf("%02d\t|\t%d\t|\t%d\t|\t%d\t|\t%d\t|\tR%02d-%d\t|\tR%02d-%d\t|\tR%02d-%d\n",
+		 					i, ls_queue[i].status, ls_queue[i].load_store, ls_queue[i].mem_valid, ls_queue[i].data_ready,
+							ls_queue[i].rd, ls_queue[i].rd_value, ls_queue[i].rs1, ls_queue[i].rs1_value, ls_queue[i].rs2, ls_queue[i].rs2_value);
+		}
+	}
+}

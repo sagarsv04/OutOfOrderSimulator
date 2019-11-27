@@ -11,6 +11,8 @@
 #include <string.h>
 
 #include "cpu.h"
+#include "ls_iq.h"
+#include "rob.h"
 
 
 
@@ -21,63 +23,47 @@ int main(int argc, char const* argv[]) {
   int num_cycle = 0;
   char func[10];
   // argc = count of arguments, executable being 1st argument in argv[0]
-  if (argc == 4) {
-    fprintf(stderr, "APEX_INFO : Initializing One Time Execution !!!\n");
-    strcpy(func, argv[2]);
-    num_cycle = atoi(argv[3]);
-    if (((strcmp(func, "display") == 0)||(strcmp(func, "simulate")==0))&&(num_cycle>0)) {
-      APEX_CPU* cpu = APEX_cpu_init(argv[1]);
-      if (!cpu) {
-        fprintf(stderr, "APEX_Error : Unable to initialize CPU\n");
-        exit(1);
-      }
-      int ret = 0;
-      if (strcmp(func, "display") == 0) {
-        // show everything
-        ret = APEX_cpu_run(cpu, num_cycle);
-        if (ret == SUCCESS) {
-          printf("Simulation Complete\n");
-        }
-        else {
-          printf("Simulation Return Code %d\n",ret);
-        }
-        print_cpu_content(cpu);
-        APEX_cpu_stop(cpu);
-        printf("Press Any Key to Exit Simulation\n");
-        getchar();
-      }
-      else {
-        // show only stages
-        ret = APEX_cpu_run(cpu, num_cycle);
-        if (ret == SUCCESS) {
-          printf("Simulation Complete\n");
-        }
-        else {
-          printf("Simulation Return Code %d\n",ret);
-        }
-        APEX_cpu_stop(cpu);
-        printf("Press Any Key to Exit Simulation\n");
-        getchar();
-      }
-    }
-    else {
-      fprintf(stderr, "Invalid parameters passed !!!\n");
-      if (!num_cycle) {
-        fprintf(stderr, "Number of Cycles cannot be 0\n");
-      }
-      fprintf(stderr, "APEX_Help : Usage %s <input_file> <func(eg: simulate Or display)> <num_cycle>\n", argv[0]);
-      exit(1);
-    }
-  }
-  else if (argc == 2) {
-    fprintf(stderr, "APEX_INFO : Initializing N Time Execution !!!\n");
+  if ((argc == 4)||(argc == 2)) {
+    fprintf(stderr, "APEX_INFO : Initializing CPU !!!\n");
     APEX_CPU* cpu = APEX_cpu_init(argv[1]);
-    if (!cpu) {
+    APEX_LSQ* ls_queue = init_ls_queue();
+    APEX_IQ* issue_queue = init_issue_queue();
+    APEX_ROB* rob = init_reorder_buffer();
+    APEX_RENAME_TABLE* rename_table = init_rename_table();
+
+    if ((!cpu)||(!issue_queue)||(!ls_queue)||(!rob)||(!rename_table)) {
       fprintf(stderr, "APEX_Error : Unable to initialize CPU\n");
       exit(1);
     }
-    else {
-      int ret = 0;
+    int ret = 0;
+    if (argc == 4) {
+      strcpy(func, argv[2]);
+      num_cycle = atoi(argv[3]);
+      if (((strcmp(func, "display") == 0)||(strcmp(func, "simulate")==0))&&(num_cycle>0)) {
+        ret = APEX_cpu_run(cpu, num_cycle);
+        if (ret == SUCCESS) {
+          printf("Simulation Complete\n");
+        }
+        else {
+          printf("Simulation Return Code %d\n",ret);
+        }
+        if (strcmp(func, "display") == 0) {
+          // show everything
+          print_cpu_content(cpu);
+          print_ls_iq_content(ls_queue, issue_queue);
+          print_rob_rename_content(rob, rename_table);
+        }
+      }
+      else {
+        fprintf(stderr, "Invalid parameters passed !!!\n");
+        if (!num_cycle) {
+          fprintf(stderr, "Number of Cycles cannot be 0\n");
+        }
+        fprintf(stderr, "APEX_Help : Usage %s <input_file> <func(eg: simulate Or display)> <num_cycle>\n", argv[0]);
+        exit(1);
+      }
+    }
+    else if (argc == 2) {
       while (ret==0) {
         fprintf(stderr, "Usage ?: <func(eg: simulate Or display)> <num_cycle>\n");
         fprintf(stderr, "Exit : exit<space><entre>\n");
@@ -92,33 +78,36 @@ int main(int argc, char const* argv[]) {
           break;
         }
         if (((strcmp(func, "display") == 0)||(strcmp(func, "simulate")==0))&&(num_cycle>0)) {
-          if (strcmp(func, "display") == 0) {
-            // show everything
-            ret = APEX_cpu_run(cpu, num_cycle);
-            if (ret == SUCCESS) {
-              printf("(apex) >> Simulation Complete");
-            }
-            else {
-              printf("Simulation Return Code %d\n",ret);
-            }
-            print_cpu_content(cpu);
+          ret = APEX_cpu_run(cpu, num_cycle);
+          if (ret == SUCCESS) {
+            printf("Simulation Complete\n");
           }
           else {
-            // show only stages
-            ret = APEX_cpu_run(cpu, num_cycle);
-            if (ret == SUCCESS) {
-              printf("(apex) >> Simulation Complete");
-            }
-            else {
-              printf("Simulation Return Code %d\n",ret);
-            }
+            printf("Simulation Return Code %d\n",ret);
+          }
+          if (strcmp(func, "display") == 0) {
+            // show everything
+            print_cpu_content(cpu);
+            print_ls_iq_content(ls_queue, issue_queue);
+            print_rob_rename_content(rob, rename_table);
           }
         }
+        else {
+          fprintf(stderr, "Invalid parameters passed !!!\n");
+          if (!num_cycle) {
+            fprintf(stderr, "Number of Cycles cannot be 0\n");
+          }
+          fprintf(stderr, "APEX_Help : Usage %s <input_file> <func(eg: simulate Or display)> <num_cycle>\n", argv[0]);
+        }
       }
-      APEX_cpu_stop(cpu);
-      printf("Press Any Key to Exit Simulation\n");
-      getchar();
     }
+    printf("Press Any Key to Exit Simulation\n");
+    getchar();
+    deinit_issue_queue(issue_queue);
+    deinit_ls_queue(ls_queue);
+    deinit_rename_table(rename_table);
+    deinit_reorder_buffer(rob);
+    APEX_cpu_stop(cpu);
   }
   else {
     fprintf(stderr, "Invalid parameters passed !!!\n");
