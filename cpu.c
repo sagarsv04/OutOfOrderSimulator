@@ -16,12 +16,6 @@
 #include "ls_iq.h"
 #include "forwarding.h"
 
-/* Set this flag to 1 to enable debug messages */
-#define ENABLE_DEBUG_MESSAGES 1
-
-/* Set this flag to 1 to enable print of Regs, Flags, Memory */
-#define ENABLE_REG_MEM_STATUS_PRINT 1
-#define ENABLE_PUSH_STAGE_PRINT 0
 
 /*
  * ########################################## Initialize CPU ##########################################
@@ -253,8 +247,11 @@ int fetch(APEX_CPU* cpu) {
 		APEX_Instruction* current_ins = &cpu->code_memory[get_code_index(cpu->pc)];
 		strcpy(stage->opcode, current_ins->opcode);
 		stage->rd = current_ins->rd;
+		stage->rd_valid = 0;
 		stage->rs1 = current_ins->rs1;
+		stage->rs1_valid = 0;
 		stage->rs2 = current_ins->rs2;
+		stage->rs2_valid = 0;
 		stage->imm = current_ins->imm;
 		stage->inst_type = current_ins->type;
 
@@ -281,8 +278,11 @@ int fetch(APEX_CPU* cpu) {
 			APEX_Instruction* current_ins = &cpu->code_memory[get_code_index(cpu->pc)];
 			strcpy(stage->opcode, current_ins->opcode);
 			stage->rd = current_ins->rd;
+			stage->rd_valid = 0;
 			stage->rs1 = current_ins->rs1;
+			stage->rs1_valid = 0;
 			stage->rs2 = current_ins->rs2;
+			stage->rs2_valid = 0;
 			stage->imm = current_ins->imm;
 			stage->inst_type = current_ins->type;
 		}
@@ -303,8 +303,7 @@ int decode(APEX_CPU* cpu) {
 	CPU_Stage* stage = &cpu->stage[DRF];
 	stage->executed = 0;
 	// decode stage only has power to stall itself and Fetch stage
-	APEX_Forward forwarding; // =
-	forwarding = get_cpu_forwarding_status(cpu, stage);
+	APEX_Forward forwarding = get_cpu_forwarding_status(cpu, stage);
 	if ((!stage->stalled)||(forwarding.unstall)) {
 		/* Read data from register file for store */
 		switch(stage->inst_type) {
@@ -313,40 +312,39 @@ int decode(APEX_CPU* cpu) {
 				if (!get_reg_status(cpu, stage->rd) && !get_reg_status(cpu, stage->rs1)) {
 					// read literal and register values
 					stage->rd_value = get_reg_values(cpu, stage, 0, stage->rd);
+					stage->rd_valid = 1;
 					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
+					stage->rs1_valid = 1;
 					stage->buffer = stage->imm; // keeping literal value in buffer to calculate mem add in exe stage
 				}
 				else if (forwarding.status) {
 					// take the value
 					stage->rd_value = cpu->stage[forwarding.rd_from].rd_value;
+					stage->rd_valid = 1;
 					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
+					stage->rs1_valid = 1;
 					stage->buffer = stage->imm; // keeping literal value in buffer to calculate mem add in exe stage
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
 				}
 				else if ((forwarding.rs1_from>=0) && !get_reg_status(cpu, stage->rd)) {
 					// take the value
 					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
+					stage->rs1_valid = 1;
 					stage->rd_value = get_reg_values(cpu, stage, 0, stage->rd);
+					stage->rd_valid = 1;
 					stage->buffer = stage->imm; // keeping literal value in buffer to calculate mem add in exe stage
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
 				}
 				else if ((forwarding.rd_from>=0) && !get_reg_status(cpu, stage->rs1)) {
 					// take the value
 					stage->rd_value = cpu->stage[forwarding.rd_from].rd_value;
+					stage->rd_valid = 1;
 					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
+					stage->rs1_valid = 1;
 					stage->buffer = stage->imm; // keeping literal value in buffer to calculate mem add in exe stage
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
 				}
 				else {
-				// keep DF and Fetch Stage in stall if regs_invalid is set
-				cpu->stage[DRF].stalled = 1;
-				cpu->stage[F].stalled = 1;
+				// invalid the regs values
+				stage->rd_valid = 0;
+				stage->rs1_valid = 0;
 				}
 				break;
 
@@ -354,49 +352,53 @@ int decode(APEX_CPU* cpu) {
 				// read only values of last two registers
 				if (!get_reg_status(cpu, stage->rd) && !get_reg_status(cpu, stage->rs1) && !get_reg_status(cpu, stage->rs2)) {
 					stage->rd_value = get_reg_values(cpu, stage, 0, stage->rd);
+					stage->rd_valid = 1;
 					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1); // Here rd becomes src1 and src2, src3 are rs1, rs2
+					stage->rs1_valid = 1;
 					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
+					stage->rs2_valid = 1;
 				}
 				else if (forwarding.status) {
 					// take the value
 					stage->rd_value = cpu->stage[forwarding.rd_from].rd_value;
+					stage->rd_valid = 1;
 					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
+					stage->rs1_valid = 1;
 					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
+					stage->rs2_valid = 1;
 				}
 				else if ((forwarding.rd_from>=0) && !get_reg_status(cpu, stage->rs1) && !get_reg_status(cpu, stage->rs2)) {
 					// take the value
 					stage->rd_value = cpu->stage[forwarding.rd_from].rd_value;
+					stage->rd_valid = 1;
 					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
+					stage->rs1_valid = 1;
 					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
+					stage->rs2_valid = 1;
 				}
 				else if ((forwarding.rs1_from>=0) && !get_reg_status(cpu, stage->rd) && !get_reg_status(cpu, stage->rs2)) {
 					// take the value
 					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
+					stage->rs1_valid = 1;
 					stage->rd_value = get_reg_values(cpu, stage, 0, stage->rd);
+					stage->rd_valid = 1;
 					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
+					stage->rs2_valid = 1;
 				}
 				else if ((forwarding.rs2_from>=0) && !get_reg_status(cpu, stage->rd) && !get_reg_status(cpu, stage->rs1)) {
 					// take the value
 					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
+					stage->rs2_valid = 1;
 					stage->rd_value = get_reg_values(cpu, stage, 0, stage->rd);
+					stage->rd_valid = 1;
 					stage->rs1_value = get_reg_values(cpu, stage, 2, stage->rs1);
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
+					stage->rs1_valid = 1;
 				}
 				else {
-					// keep DF and Fetch Stage in stall if regs_invalid is set
-					cpu->stage[DRF].stalled = 1;
-					cpu->stage[F].stalled = 1;
+					// invalid the regs values
+					stage->rd_valid = 0;
+					stage->rs1_valid = 0;
+					stage->rs2_valid = 0;
 				}
 				break;
 
@@ -404,20 +406,18 @@ int decode(APEX_CPU* cpu) {
 				// read literal and register values
 				if (!get_reg_status(cpu, stage->rs1)) {
 					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
+					stage->rs1_valid = 1;
 					stage->buffer = stage->imm; // keeping literal value in buffer to calculate mem add in exe stage
 				}
 				else if (forwarding.status) {
 					// take the value
 					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
+					stage->rs1_valid = 1;
 					stage->buffer = stage->imm; // keeping literal value in buffer to calculate mem add in exe stage
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
 				}
 				else {
-					// keep DF and Fetch Stage in stall if regs_invalid is set
-					cpu->stage[DRF].stalled = 1;
-					cpu->stage[F].stalled = 1;
+					// invalid the regs values
+					stage->rs1_valid = 0;
 				}
 				break;
 
@@ -425,36 +425,35 @@ int decode(APEX_CPU* cpu) {
 				// read only values of last two registers
 				if (!get_reg_status(cpu, stage->rs1) && !get_reg_status(cpu, stage->rs2)) {
 					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
+					stage->rs1_valid = 1;
 					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
+					stage->rs2_valid = 1;
 				}
 				else if (forwarding.status) {
 					// take the value
 					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
+					stage->rs1_valid = 1;
 					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
+					stage->rs2_valid = 1;
 				}
 				else if ((forwarding.rs2_from>=0) && !get_reg_status(cpu, stage->rs1)) {
 					// take the value
 					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
+					stage->rs1_valid = 1;
 					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
+					stage->rs2_valid = 1;
 				}
 				else if ((forwarding.rs1_from>=0) && !get_reg_status(cpu, stage->rs2)) {
 					// take the value
 					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
+					stage->rs1_valid = 1;
 					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
+					stage->rs2_valid = 1;
 				}
 				else {
-					// keep DF and Fetch Stage in stall if regs_invalid is set
-					cpu->stage[DRF].stalled = 1;
-					cpu->stage[F].stalled = 1;
+					// invalid the regs values
+					stage->rs1_valid = 0;
+					stage->rs2_valid = 0;
 				}
 				break;
 
@@ -467,18 +466,16 @@ int decode(APEX_CPU* cpu) {
 				// read register values
 				if (!get_reg_status(cpu, stage->rs1)) {
 					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
+					stage->rs1_valid = 1;
 				}
 				else if (forwarding.status) {
 					// take the value
 					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
+					stage->rs1_valid = 1;
 				}
 				else {
-					// keep DF and Fetch Stage in stall if regs_invalid is set
-					cpu->stage[DRF].stalled = 1;
-					cpu->stage[F].stalled = 1;
+					// invalid the regs values
+					stage->rs1_valid = 0;
 				}
 				break;
 
@@ -486,36 +483,35 @@ int decode(APEX_CPU* cpu) {
 				// read only values of last two registers
 				if (!get_reg_status(cpu, stage->rs1) && !get_reg_status(cpu, stage->rs2)) {
 					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
+					stage->rs1_valid = 1;
 					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
+					stage->rs2_valid = 1;
 				}
 				else if (forwarding.status) {
 					// take the value
 					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
+					stage->rs1_valid = 1;
 					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
+					stage->rs2_valid = 1;
 				}
 				else if ((forwarding.rs2_from>=0) && !get_reg_status(cpu, stage->rs1)) {
 					// take the value
 					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
+					stage->rs1_valid = 1;
 					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
+					stage->rs2_valid = 1;
 				}
 				else if ((forwarding.rs1_from>=0) && !get_reg_status(cpu, stage->rs2)) {
 					// take the value
 					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
+					stage->rs1_valid = 1;
 					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
+					stage->rs2_valid = 1;
 				}
 				 else {
-					// keep DF and Fetch Stage in stall if regs_invalid is set
-					cpu->stage[DRF].stalled = 1;
-					cpu->stage[F].stalled = 1;
+ 					// invalid the regs values
+ 					stage->rs1_valid = 0;
+ 					stage->rs2_valid = 0;
 				}
 				break;
 
@@ -523,20 +519,18 @@ int decode(APEX_CPU* cpu) {
 				// read only values of last two registers
 				if (!get_reg_status(cpu, stage->rs1)) {
 					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
+					stage->rs1_valid = 1;
 					stage->buffer = stage->imm; // keeping literal value in buffer to add in exe stage
 				}
 				else if (forwarding.status) {
 					// take the value
 					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
+					stage->rs1_valid = 1;
 					stage->buffer = stage->imm; // keeping literal value in buffer to calculate mem add in exe stage
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
 				}
 				else {
-					// keep DF and Fetch Stage in stall if regs_invalid is set
-					cpu->stage[DRF].stalled = 1;
-					cpu->stage[F].stalled = 1;
+					// invalid the regs values
+					stage->rs1_valid = 0;
 				}
 				break;
 
@@ -544,36 +538,35 @@ int decode(APEX_CPU* cpu) {
 				// read only values of last two registers
 				if (!get_reg_status(cpu, stage->rs1) && !get_reg_status(cpu, stage->rs2)) {
 					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
+					stage->rs1_valid = 1;
 					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
+					stage->rs2_valid = 1;
 				}
 				else if (forwarding.status) {
 					// take the value
 					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
+					stage->rs1_valid = 1;
 					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
+					stage->rs2_valid = 1;
 				}
 				else if ((forwarding.rs2_from>=0) && !get_reg_status(cpu, stage->rs1)) {
 					// take the value
 					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
+					stage->rs1_valid = 1;
 					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
+					stage->rs2_valid = 1;
 				}
 				else if ((forwarding.rs1_from>=0) && !get_reg_status(cpu, stage->rs2)) {
 					// take the value
 					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
+					stage->rs1_valid = 1;
 					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
+					stage->rs2_valid = 1;
 				}
 				else {
-					// keep DF and Fetch Stage in stall if regs_invalid is set
-					cpu->stage[DRF].stalled = 1;
-					cpu->stage[F].stalled = 1;
+					// invalid the regs values
+					stage->rs1_valid = 0;
+					stage->rs2_valid = 0;
 				}
 				break;
 
@@ -581,20 +574,18 @@ int decode(APEX_CPU* cpu) {
 				// read only values of last two registers
 				if (!get_reg_status(cpu, stage->rs1)) {
 					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
+					stage->rs1_valid = 1;
 					stage->buffer = stage->imm; // keeping literal value in buffer to sub in exe stage
 				}
 				else if (forwarding.status) {
 					// take the value
 					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
+					stage->rs1_valid = 1;
 					stage->buffer = stage->imm; // keeping literal value in buffer to calculate mem add in exe stage
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
 				}
 				else {
-					// keep DF and Fetch Stage in stall if regs_invalid is set
-					cpu->stage[DRF].stalled = 1;
-					cpu->stage[F].stalled = 1;
+					// invalid the regs values
+					stage->rs1_valid = 0;
 				}
 				break;
 
@@ -602,36 +593,35 @@ int decode(APEX_CPU* cpu) {
 				// read only values of last two registers
 				if (!get_reg_status(cpu, stage->rs1) && !get_reg_status(cpu, stage->rs2)) {
 					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
+					stage->rs1_valid = 1;
 					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
+					stage->rs2_valid = 1;
 				}
 				else if (forwarding.status) {
 					// take the value
 					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
+					stage->rs1_valid = 1;
 					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
+					stage->rs2_valid = 1;
 				}
 				else if ((forwarding.rs2_from>=0) && !get_reg_status(cpu, stage->rs1)) {
 					// take the value
 					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
+					stage->rs1_valid = 1;
 					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
+					stage->rs2_valid = 1;
 				}
 				else if ((forwarding.rs1_from>=0) && !get_reg_status(cpu, stage->rs2)) {
 					// take the value
 					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
+					stage->rs1_valid = 1;
 					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
+					stage->rs2_valid = 1;
 				}
 				else {
-					// keep DF and Fetch Stage in stall if regs_invalid is set
-					cpu->stage[DRF].stalled = 1;
-					cpu->stage[F].stalled = 1;
+					// invalid the regs values
+					stage->rs1_valid = 0;
+					stage->rs2_valid = 0;
 				}
 				break;
 
@@ -639,36 +629,35 @@ int decode(APEX_CPU* cpu) {
 				// read only values of last two registers
 				if (!get_reg_status(cpu, stage->rs1) && !get_reg_status(cpu, stage->rs2)) {
 					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
+					stage->rs1_valid = 1;
 					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
+					stage->rs2_valid = 1;
 				}
 				else if (forwarding.status) {
 					// take the value
 					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
+					stage->rs1_valid = 1;
 					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
+					stage->rs2_valid = 1;
 				}
 				else if ((forwarding.rs2_from>=0) && !get_reg_status(cpu, stage->rs1)) {
 					// take the value
 					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
+					stage->rs1_valid = 1;
 					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
+					stage->rs2_valid = 1;
 				}
 				else if ((forwarding.rs1_from>=0) && !get_reg_status(cpu, stage->rs2)) {
 					// take the value
 					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
+					stage->rs1_valid = 1;
 					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
+					stage->rs2_valid = 1;
 				}
 				else {
-					// keep DF and Fetch Stage in stall if regs_invalid is set
-					cpu->stage[DRF].stalled = 1;
-					cpu->stage[F].stalled = 1;
+					// invalid the regs values
+					stage->rs1_valid = 0;
+					stage->rs2_valid = 0;
 				}
 				break;
 
@@ -676,36 +665,35 @@ int decode(APEX_CPU* cpu) {
 				// read only values of last two registers
 				if (!get_reg_status(cpu, stage->rs1) && !get_reg_status(cpu, stage->rs2)) {
 					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
+					stage->rs1_valid = 1;
 					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
+					stage->rs2_valid = 1;
 				}
 				else if (forwarding.status) {
 					// take the value
 					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
+					stage->rs1_valid = 1;
 					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
+					stage->rs2_valid = 1;
 				}
 				else if ((forwarding.rs2_from>=0) && !get_reg_status(cpu, stage->rs1)) {
 					// take the value
 					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
+					stage->rs1_valid = 1;
 					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
+					stage->rs2_valid = 1;
 				}
 				else if ((forwarding.rs1_from>=0) && !get_reg_status(cpu, stage->rs2)) {
 					// take the value
 					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
+					stage->rs1_valid = 1;
 					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
+					stage->rs2_valid = 1;
 				}
 				else {
-					// keep DF and Fetch Stage in stall if regs_invalid is set
-					cpu->stage[DRF].stalled = 1;
-					cpu->stage[F].stalled = 1;
+					// invalid the regs values
+					stage->rs1_valid = 0;
+					stage->rs2_valid = 0;
 				}
 				break;
 
@@ -713,36 +701,35 @@ int decode(APEX_CPU* cpu) {
 				// read only values of last two registers
 				if (!get_reg_status(cpu, stage->rs1) && !get_reg_status(cpu, stage->rs2)) {
 					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
+					stage->rs1_valid = 1;
 					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
+					stage->rs2_valid = 1;
 				}
 				else if (forwarding.status) {
 					// take the value
 					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
+					stage->rs1_valid = 1;
 					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
+					stage->rs2_valid = 1;
 				}
 				else if ((forwarding.rs2_from>=0) && !get_reg_status(cpu, stage->rs1)) {
 					// take the value
 					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
+					stage->rs1_valid = 1;
 					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
+					stage->rs2_valid = 1;
 				}
 				else if ((forwarding.rs1_from>=0) && !get_reg_status(cpu, stage->rs2)) {
 					// take the value
 					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
+					stage->rs1_valid = 1;
 					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
+					stage->rs2_valid = 1;
 				}
 				else {
-					// keep DF and Fetch Stage in stall if regs_invalid is set
-					cpu->stage[DRF].stalled = 1;
-					cpu->stage[F].stalled = 1;
+					// invalid the regs values
+					stage->rs1_valid = 0;
+					stage->rs2_valid = 0;
 				}
 				break;
 
@@ -750,89 +737,64 @@ int decode(APEX_CPU* cpu) {
 				// read only values of last two registers
 				if (!get_reg_status(cpu, stage->rs1) && !get_reg_status(cpu, stage->rs2)) {
 					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
+					stage->rs1_valid = 1;
 					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
+					stage->rs2_valid = 1;
 				}
 				else if (forwarding.status) {
 					// take the value
 					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
+					stage->rs1_valid = 1;
 					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
+					stage->rs2_valid = 1;
 				}
 				else if ((forwarding.rs2_from>=0) && !get_reg_status(cpu, stage->rs1)) {
 					// take the value
 					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
+					stage->rs1_valid = 1;
 					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
+					stage->rs2_valid = 1;
 				}
 				else if ((forwarding.rs1_from>=0) && !get_reg_status(cpu, stage->rs2)) {
 					// take the value
 					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
+					stage->rs1_valid = 1;
 					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
+					stage->rs2_valid = 1;
 				}
 				else {
-					// keep DF and Fetch Stage in stall if regs_invalid is set
-					cpu->stage[DRF].stalled = 1;
-					cpu->stage[F].stalled = 1;
+					// invalid the regs values
+					stage->rs1_valid = 0;
+					stage->rs2_valid = 0;
 				}
 				break;
 
 			case BZ:  // ************************************* BZ ************************************* //
 				// read literal values
 				stage->buffer = stage->imm; // keeping literal value in buffer to jump in exe stage
-				if ((forwarding.status)&&(!previous_arithmetic_check(cpu, WB))) {
-					// if previous was arithmatic instruction than stall
-					// keep DF and Fetch Stage in stall if regs_invalid is set
-					stage->rd_value = cpu->stage[WB].rd_value;
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
-				}
-				else {
-					cpu->stage[DRF].stalled = 1;
-					cpu->stage[F].stalled = 1;
-				}
 				break;
 
 			case BNZ:  // ************************************* BNZ ************************************* //
 				// read literal values
 				stage->buffer = stage->imm; // keeping literal value in buffer to jump in exe stage
-				if ((forwarding.status)&&(!previous_arithmetic_check(cpu, WB))) {
-					// if previous was arithmatic instruction than stall
-					// keep DF and Fetch Stage in stall if regs_invalid is set
-					stage->rd_value = cpu->stage[WB].rd_value;
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
-				}
-				else {
-					cpu->stage[DRF].stalled = 1;
-					cpu->stage[F].stalled = 1;
-				}
 				break;
 
 			case JUMP:   // ************************************* JUMP ************************************* //
 				// read literal and register values
 				if (!get_reg_status(cpu, stage->rs1)) {
 					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
+					stage->rs1_valid = 1;
 					stage->buffer = stage->imm; // keeping literal value in buffer to cal memory to jump in exe stage
 				}
 				else if (forwarding.status) {
 					// take the value
 					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
+					stage->rs1_valid = 1;
 					stage->buffer = stage->imm; // keeping literal value in buffer to calculate mem add in exe stage
-					// Un Stall DF and Fetch Stage
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
 				}
 				else {
-					// keep DF and Fetch Stage in stall if regs_invalid is set
-					cpu->stage[DRF].stalled = 1;
-					cpu->stage[F].stalled = 1;
+					// invalid the regs values
+					stage->rs1_valid = 0;
 				}
 				break;
 
@@ -853,6 +815,9 @@ int decode(APEX_CPU* cpu) {
 				break;
 		}
 
+		// decode should stall if IQ is full
+		// and unstall if entry is available
+		// use diff func to handle this case
 		stage->executed = 1;
 	}
 
@@ -1690,51 +1655,6 @@ int rob_commit(APEX_CPU* cpu) {
 }
 
 
-
-
-// static void push_stages(APEX_CPU* cpu) {
-//
-// 	cpu->stage[WB] = cpu->stage[MEM_TWO];
-// 	cpu->stage[WB].executed = 0;
-// 	cpu->stage[MEM_TWO] = cpu->stage[MEM_ONE];
-// 	cpu->stage[MEM_TWO].executed = 0;
-// 	cpu->stage[MEM_ONE] = cpu->stage[EX_TWO];
-// 	cpu->stage[MEM_ONE].executed = 0;
-// 	cpu->stage[EX_TWO] = cpu->stage[EX_ONE];
-// 	cpu->stage[EX_TWO].executed = 0;
-// 	if (!cpu->stage[DRF].stalled) {
-// 		cpu->stage[EX_ONE] = cpu->stage[DRF];
-// 		cpu->stage[EX_ONE].executed = 0;
-// 	}
-// 	else {
-// 		add_bubble_to_stage(cpu, EX_ONE, 0); // next cycle Bubble will be executed
-// 		cpu->stage[EX_ONE].executed = 0;
-// 	}
-// 	if (!cpu->stage[F].stalled) {
-// 		cpu->stage[DRF].rd = -99;
-// 		cpu->stage[DRF].rs1 = -99;
-// 		cpu->stage[DRF].rs2 = -99;
-// 		cpu->stage[DRF] = cpu->stage[F];
-// 		cpu->stage[DRF].executed = 0;
-// 	}
-// 	else if (!cpu->stage[DRF].stalled) {
-// 		add_bubble_to_stage(cpu, DRF, 0); // next cycle Bubble will be executed
-// 		cpu->stage[DRF].executed = 0;
-// 	}
-// 	if (ENABLE_PUSH_STAGE_PRINT) {
-// 		printf("\n--------------------------------\n");
-// 		printf("Clock Cycle #: %d Instructions Pushed\n", cpu->clock);
-// 		printf("%-15s: Executed: Instruction\n", "Stage");
-// 		printf("--------------------------------\n");
-// 		print_stage_content("Writeback", &cpu->stage[WB]);
-// 		print_stage_content("Memory Two", &cpu->stage[MEM_TWO]);
-// 		print_stage_content("Memory One", &cpu->stage[MEM_ONE]);
-// 		print_stage_content("Execute Two", &cpu->stage[EX_TWO]);
-// 		print_stage_content("Execute One", &cpu->stage[EX_ONE]);
-// 		print_stage_content("Decode/RF", &cpu->stage[DRF]);
-// 		print_stage_content("Fetch", &cpu->stage[F]);
-// 	}
-// }
 /*
  * ########################################## CPU Run ##########################################
  */
@@ -1763,7 +1683,7 @@ int APEX_cpu_run(APEX_CPU* cpu, int num_cycle) {
 
 			int stage_ret = 0;
 			stage_ret = fetch(cpu); // fetch inst from code memory
-			// stage_ret = decode(cpu); // decode will have rename and dispatch func call inside
+			stage_ret = decode(cpu); // decode will have rename and dispatch func call inside
 			// stage_ret = issue_queue(cpu); // issue will have issue func call inside
 			// // issue will issue load/store to LSQ and rob, then lsq will send inst to mem
 			// // issue will issue other inst to FU and rob
@@ -1802,7 +1722,7 @@ int APEX_cpu_run(APEX_CPU* cpu, int num_cycle) {
 			if ((stage_ret!=HALT)&&(stage_ret!=SUCCESS)) {
 				ret = stage_ret;
 			}
-			// push_stages(cpu);
+			push_stages(cpu);
 		}
 	}
 

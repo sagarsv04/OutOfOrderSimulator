@@ -57,6 +57,9 @@ int add_reorder_buffer_entry(APEX_ROB* rob, APEX_IQ* iq_entry) {
 	// if instruction sucessfully added then only pass the instruction to function units
 	// entry gets added by DRF at the same time dispatching instruction to issue_queue
 	// using iq_entry to add entry so first add to issue_queue and use the same entry to add to rob simultaniously
+	if (rob->issue_ptr == ROB_SIZE) {
+		rob->issue_ptr = 0; // go back to zero index
+	}
 	if (rob->buffer_length == ROB_SIZE) {
 		return FAILURE;
 	}
@@ -64,9 +67,6 @@ int add_reorder_buffer_entry(APEX_ROB* rob, APEX_IQ* iq_entry) {
 		return FAILURE;
 	}
 	else {
-		if (rob->issue_ptr == ROB_SIZE) {
-			rob->issue_ptr = 0; // go back to zero index
-		}
 		rob->rob_entry[rob->issue_ptr].status = iq_entry->status;
 		rob->rob_entry[rob->issue_ptr].inst_type = iq_entry->inst_type;
 		rob->rob_entry[rob->issue_ptr].inst_ptr = iq_entry->inst_ptr;

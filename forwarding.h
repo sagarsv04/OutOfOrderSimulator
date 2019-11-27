@@ -21,7 +21,9 @@ typedef struct APEX_Forward {
 	int unstall;
 } APEX_Forward;
 
+void clear_stage_entry(APEX_CPU* cpu, int stage_index);
 void add_bubble_to_stage(APEX_CPU* cpu, int stage_index, int flushed);
+void push_stages(APEX_CPU* cpu);
 APEX_Forward get_cpu_forwarding_status(APEX_CPU* cpu, CPU_Stage* stage);
 
 

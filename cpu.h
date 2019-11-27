@@ -10,10 +10,17 @@
  */
 
 
-#define RUNNING_IN_WINDOWS 0
+#define RUNNING_IN_WINDOWS 1
 
 #define DATA_MEMORY_SIZE 4096
 #define REGISTER_FILE_SIZE 32
+
+/* Set this flag to 1 to enable debug messages */
+#define ENABLE_DEBUG_MESSAGES 1
+
+/* Set this flag to 1 to enable print of Regs, Flags, Memory */
+#define ENABLE_REG_MEM_STATUS_PRINT 1
+#define ENABLE_PUSH_STAGE_PRINT 0
 
 enum {
 	F,
@@ -93,6 +100,7 @@ typedef struct CPU_Stage {
 	int rs2;          // Source-2 Register Address
 	int imm;          // Literal Value
 	int rd_value;     // Destination Register Value
+	int rd_valid;     // Destination Register Value Valid
 	int rs1_value;    // Source-1 Register Value
 	int rs1_valid;    // Source-1 Register Value Valid
 	int rs2_value;    // Source-2 Register Value
