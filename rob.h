@@ -9,7 +9,6 @@
  *  State University of New York, Binghamton
  */
 
-#include "cpu.h"
 #include "ls_iq.h"
 
 
@@ -41,14 +40,33 @@ typedef struct APEX_ROB {
 } APEX_ROB;
 
 
+/* Format of an ROB entry/update mechanism  */
+typedef struct ROB_update {
+	int inst_type;
+	int executed;
+	int pc;
+	int rd;
+	int rd_value;
+	int rd_valid;
+	int rs1;
+	int rs1_value;
+	int rs1_valid;
+	int rs2;
+	int rs2_value;
+	int rs2_valid;
+	int imm;
+} ROB_update;
+
+
 APEX_ROB* init_reorder_buffer();
 APEX_RENAME_TABLE* init_rename_table();
 void deinit_reorder_buffer(APEX_ROB* rob);
 void deinit_rename_table(APEX_RENAME_TABLE* rename_table);
 
 int add_reorder_buffer_entry(APEX_ROB* rob, APEX_IQ* iq_entry);
-int update_reorder_buffer_entry_data(APEX_ROB* rob, CPU_Stage* stage);
-int commit_reorder_buffer_entry(APEX_ROB* rob, APEX_CPU* cpu);
+
+int update_reorder_buffer_entry_data(APEX_ROB* rob, ROB_update stage_entry);
+int commit_reorder_buffer_entry(APEX_ROB* rob, int* cpu_reg, int* cpu_reg_valid);
 
 void print_rob_rename_content(APEX_ROB* rob, APEX_RENAME_TABLE* rename_table);
 

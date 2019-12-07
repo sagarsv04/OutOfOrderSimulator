@@ -9,6 +9,10 @@
  *  State University of New York, Binghamton
  */
 
+//
+#include "rob.h"
+#include "ls_iq.h"
+
 
 #define RUNNING_IN_WINDOWS 1
 
@@ -31,10 +35,8 @@ enum {
 	MUL_TWO,
 	MUL_THREE,
 	BRANCH,
-	MEM_ONE,
-	MEM_TWO,
-	MEM_THREE,
-	WB,
+	MEM,	// one stage with 3 cycle latency
+	WB,		// this is replaces by ROB making the commit and updating the reg or other stages
 	NUM_STAGES
 };
 
@@ -111,6 +113,7 @@ typedef struct CPU_Stage {
 	int stalled;      // Flag to indicate, stage is stalled
 	int executed;     // Flag to indicate, stage has executed or not
 	int empty;        // Flag to indicate, stage is empty
+	int stage_cycle;  // Keep count of cycle for individual stage // used to Mem stage
 } CPU_Stage;
 
 /* Model of APEX CPU */
@@ -141,7 +144,7 @@ int display(APEX_CPU* cpu, int num_cycle);
 
 void print_cpu_content(APEX_CPU* cpu);
 
-int APEX_cpu_run(APEX_CPU* cpu, int num_cycle);
+int APEX_cpu_run(APEX_CPU* cpu, int num_cycle, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APEX_ROB* rob, APEX_RENAME_TABLE* rename_table);
 
 void APEX_cpu_stop(APEX_CPU* cpu);
 

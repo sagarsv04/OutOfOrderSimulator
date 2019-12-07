@@ -17,7 +17,8 @@
  * This function is related to parsing input file
  *
  * Note : You are not supposed to edit this function
- */
+*/
+
 static int get_num_from_string(char* buffer) {
 
   char str[16];

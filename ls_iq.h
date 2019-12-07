@@ -9,8 +9,6 @@
  *  State University of New York, Binghamton
 */
 
-#include "cpu.h"
-
 
 #define IQ_SIZE 8
 
@@ -34,10 +32,11 @@ typedef struct APEX_IQ {
 	int lsq_index;			// to address lSQ entry in issue queue
 } APEX_IQ;
 
+
 /* Format of an APEX Load Strore Queue mechanism  */
 typedef struct APEX_LSQ {
 	int status;					// indicate if entry is free or allocated
-	int load_store;			// indicate if entry is for load or store
+	int load_store;			// indicate if entry is for load or store // use as inst_type
 	int mem_valid;			// indicate if memory address is valid
 	int rd;							// holds destination reg tag
 	int rd_value;			// holds src1 reg value
@@ -46,13 +45,32 @@ typedef struct APEX_LSQ {
 	int rs1_value;			// holds src1 reg value
 	int rs2;						// holds src1 reg tag
 	int rs2_value;			// holds src1 reg value
+	int literal;				// hold literal value
 } APEX_LSQ;
+
+
+/* Format of an Load Store & Issue Queue entry/update mechanism  */
+typedef struct LS_IQ_update {
+	int inst_type;
+	int executed;
+	int pc;
+	int rd;
+	int rd_value;
+	int rd_valid;
+	int rs1;
+	int rs1_value;
+	int rs1_valid;
+	int rs2;
+	int rs2_value;
+	int rs2_valid;
+	int imm;
+} LS_IQ_update;
 
 
 APEX_IQ* init_issue_queue();
 void deinit_issue_queue(APEX_IQ* issue_queue);
-int add_issue_queue_entry(APEX_IQ* issue_queue, CPU_Stage* stage);
-int update_issue_queue_entry(APEX_IQ* issue_queue, CPU_Stage* stage);
+int add_issue_queue_entry(APEX_IQ* issue_queue, LS_IQ_update stage_entry);
+int update_issue_queue_entry(APEX_IQ* issue_queue, LS_IQ_update stage_entry);
 int get_issue_queue_index_to_issue(APEX_IQ* issue_queue, int* issue_index);
 
 APEX_LSQ* init_ls_queue();

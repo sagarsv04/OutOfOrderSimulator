@@ -15,6 +15,80 @@
 
 
 
+char* get_inst_name(int inst_type) {
+
+	char* inst_type_str = "";
+
+	switch (inst_type) {
+
+		case STORE:
+			strcpy(inst_type_str, "STORE");
+			break;
+		case STR:
+			strcpy(inst_type_str, "STR");
+			break;
+		case LOAD:
+			strcpy(inst_type_str, "LOAD");
+			break;
+		case LDR:
+			strcpy(inst_type_str, "LDR");
+			break;
+		case MOVC:
+			strcpy(inst_type_str, "MOVC");
+			break;
+		case MOV:
+			strcpy(inst_type_str, "MOV");
+			break;
+		case ADD:
+			strcpy(inst_type_str, "ADD");
+			break;
+		case ADDL:
+			strcpy(inst_type_str, "ADDL");
+			break;
+		case SUB:
+			strcpy(inst_type_str, "SUB");
+			break;
+		case SUBL:
+			strcpy(inst_type_str, "SUBL");
+			break;
+		case MUL:
+			strcpy(inst_type_str, "MUL");
+			break;
+		case DIV:
+			strcpy(inst_type_str, "DIV");
+			break;
+		case AND:
+			strcpy(inst_type_str, "AND");
+			break;
+		case OR:
+			strcpy(inst_type_str, "OR");
+			break;
+		case EXOR:
+			strcpy(inst_type_str, "EX-OR");
+			break;
+		case BZ:
+			strcpy(inst_type_str, "BZ");
+			break;
+		case BNZ:
+			strcpy(inst_type_str, "BNZ");
+			break;
+		case JUMP:
+			strcpy(inst_type_str, "JUMP");
+			break;
+		case HALT:
+			strcpy(inst_type_str, "HALT");
+			break;
+		case NOP:
+			strcpy(inst_type_str, "NOP");
+			break;
+		default:
+			strcpy(inst_type_str, "INVALID");
+			break;
+	}
+	return inst_type_str;
+}
+
+
 void clear_stage_entry(APEX_CPU* cpu, int stage_index){
 	// this is to clear any previous entries in stage and avoid conflicts between diff instructions
 	cpu->stage[stage_index].rd = -9999;

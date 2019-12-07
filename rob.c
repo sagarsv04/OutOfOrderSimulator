@@ -12,7 +12,7 @@
 #include <string.h>
 
 #include "rob.h"
-// #include "cpu.h"
+#include "cpu.h"
 
 /*
  * ########################################## Reorder Buffer Stage ##########################################
@@ -82,10 +82,10 @@ int add_reorder_buffer_entry(APEX_ROB* rob, APEX_IQ* iq_entry) {
 }
 
 
-int update_reorder_buffer_entry_data(APEX_ROB* rob, CPU_Stage* stage) {
+int update_reorder_buffer_entry_data(APEX_ROB* rob, ROB_update stage_entry) {
 	// check the stage data and update the rob data value
 	int update_position = -1;
-	if (!stage->executed) {
+	if (!stage_entry.executed) {
 		return FAILURE;
 	}
 	else {
@@ -95,7 +95,7 @@ int update_reorder_buffer_entry_data(APEX_ROB* rob, CPU_Stage* stage) {
 			// check only alloted entries
 			if (rob->rob_entry[i].status == 1) {
 				// check pc to match instructions
-				if (rob->rob_entry[i].inst_ptr==stage->pc) {
+				if (rob->rob_entry[i].inst_ptr==stage_entry.pc) {
 					update_position = i;
 					break;
 				}
@@ -105,8 +105,8 @@ int update_reorder_buffer_entry_data(APEX_ROB* rob, CPU_Stage* stage) {
 			return FAILURE;
 		}
 		else {
-			if (rob->rob_entry[update_position].rd == stage->rd) {
-				rob->rob_entry[update_position].rd_value = stage->rd_value;
+			if (rob->rob_entry[update_position].rd == stage_entry.rd) {
+				rob->rob_entry[update_position].rd_value = stage_entry.rd_value;
 				rob->rob_entry[update_position].valid = 1;
 			}
 			else {
@@ -118,7 +118,7 @@ int update_reorder_buffer_entry_data(APEX_ROB* rob, CPU_Stage* stage) {
 }
 
 
-int commit_reorder_buffer_entry(APEX_ROB* rob, APEX_CPU* cpu) {
+int commit_reorder_buffer_entry(APEX_ROB* rob, int* cpu_reg, int* cpu_reg_valid) {
 
 	if (rob->commit_ptr == ROB_SIZE) {
 		rob->commit_ptr = 0; // go back to zero index
@@ -129,9 +129,9 @@ int commit_reorder_buffer_entry(APEX_ROB* rob, APEX_CPU* cpu) {
 	else {
 		// inst ready to commit
 		// change decs reg in cpu
-		cpu->regs[rob->rob_entry[rob->commit_ptr].rd] = rob->rob_entry[rob->commit_ptr].rd_value;
+		cpu_reg[rob->rob_entry[rob->commit_ptr].rd] = rob->rob_entry[rob->commit_ptr].rd_value;
 		// decrement reg invalid count in cpu
-		cpu->regs_invalid[rob->rob_entry[rob->commit_ptr].rd] -= 1;
+		cpu_reg_valid[rob->rob_entry[rob->commit_ptr].rd] -= 1;
 		// free the rob entry
 		rob->rob_entry[rob->commit_ptr].status = 0;
 		rob->rob_entry[rob->commit_ptr].inst_type = -9999;

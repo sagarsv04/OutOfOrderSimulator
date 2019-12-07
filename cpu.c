@@ -12,8 +12,6 @@
 #include <limits.h>
 
 #include "cpu.h"
-#include "rob.h"
-#include "ls_iq.h"
 #include "forwarding.h"
 
 
@@ -59,7 +57,7 @@ APEX_CPU* APEX_cpu_init(const char* filename) {
 	}
 
 	/* Make all stages busy except Fetch stage, initally to start the pipeline */
-	for (int i = 1; i < NUM_STAGES; ++i) {
+	for (int i = 0; i < NUM_STAGES; i++) {
 		cpu->stage[i].empty = 1;
 	}
 
@@ -115,6 +113,7 @@ static void print_instruction(CPU_Stage* stage) {
 			break;
 	}
 }
+
 
 static void print_stage_status(CPU_Stage* stage) {
 	// This function prints status of stages.
@@ -829,814 +828,429 @@ int decode(APEX_CPU* cpu) {
 }
 
 /*
- * ########################################## EX One Stage ##########################################
- */
+ * ########################################## Int FU One Stage ##########################################
+*/
 int int_one_stage(APEX_CPU* cpu) {
 
 	CPU_Stage* stage = &cpu->stage[INT_ONE];
 	stage->executed = 0;
-	if (!stage->stalled) {
+	if ((!stage->stalled)&&(!stage->empty)) {
+		/* Read data from register file for store */
+		switch(stage->inst_type) {
 
-		/* Store */
-		if (strcmp(stage->opcode, "STORE") == 0) {
-			// create memory address using literal and register values
-			stage->mem_address = stage->rs1_value + stage->buffer;
-		}
-		else if (strcmp(stage->opcode, "STR") == 0) {
-			// create memory address using register values
-			stage->mem_address = stage->rs1_value + stage->rs2_value;
-		}
-		else if (strcmp(stage->opcode, "LOAD") == 0) {
-			set_reg_status(cpu, stage->rd, 1); // make desitination regs invalid so following instructions stall
-		}
-		else if (strcmp(stage->opcode, "LDR") == 0) {
-			set_reg_status(cpu, stage->rd, 1); // make desitination regs invalid so following instructions stall
-		}
-		/* MOVC */
-		else if (strcmp(stage->opcode, "MOVC") == 0) {
-			set_reg_status(cpu, stage->rd, 1); // make desitination regs invalid so following instructions stall
-		}
-		else if (strcmp(stage->opcode, "MOV") == 0) {
-			set_reg_status(cpu, stage->rd, 1); // make desitination regs invalid so following instructions stall
-		}
-		else if (strcmp(stage->opcode, "ADD") == 0) {
-			set_reg_status(cpu, stage->rd, 1); // make desitination regs invalid so following instructions stall
-		}
-		else if (strcmp(stage->opcode, "ADDL") == 0) {
-			set_reg_status(cpu, stage->rd, 1); // make desitination regs invalid so following instructions stall
-		}
-		else if (strcmp(stage->opcode, "SUB") == 0) {
-			set_reg_status(cpu, stage->rd, 1); // make desitination regs invalid so following instructions stall
-		}
-		else if (strcmp(stage->opcode, "SUBL") == 0) {
-			set_reg_status(cpu, stage->rd, 1); // make desitination regs invalid so following instructions stall
-		}
-		else if (strcmp(stage->opcode, "MUL") == 0) {
-			set_reg_status(cpu, stage->rd, 1); // make desitination regs invalid so following instructions stall
-		}
-		else if (strcmp(stage->opcode, "DIV") == 0) {
-			set_reg_status(cpu, stage->rd, 1); // make desitination regs invalid so following instructions stall
-		}
-		else if (strcmp(stage->opcode, "AND") == 0) {
-			set_reg_status(cpu, stage->rd, 1); // make desitination regs invalid so following instructions stall
-		}
-		else if (strcmp(stage->opcode, "OR") == 0) {
-			set_reg_status(cpu, stage->rd, 1); // make desitination regs invalid so following instructions stall
-		}
-		else if (strcmp(stage->opcode, "EX-OR") == 0) {
-			set_reg_status(cpu, stage->rd, 1); // make desitination regs invalid so following instructions stall
-		}
-		else if (strcmp(stage->opcode, "BZ") == 0) {
-			; // flush all the previous stages and start fetching instruction from mem_address in execute_two
-		}
-		else if (strcmp(stage->opcode, "BNZ") == 0) {
-			; // flush all the previous stages and start fetching instruction from mem_address in execute_two
-		}
-		else if (strcmp(stage->opcode, "JUMP") == 0) {
-			; // flush all the previous stages and start fetching instruction from mem_address in execute_two
-		}
-		else if (strcmp(stage->opcode, "HALT") == 0) {
-			; // treat Halt as an interrupt stoped fetching instructions
-		}
-		else if (strcmp(stage->opcode, "NOP") == 0) {
-			; // Do nothing its just a bubble
-		}
-		else {
-			; // Do nothing
+			case STORE: case STR:  // ************************************* STORE or STR ************************************* //
+				break;
+			// ************************************* LOAD to EX-OR ************************************* //
+			case LOAD: case LDR: case MOVC: case MOV: case ADD: case ADDL: case SUB: case SUBL: case DIV: case AND: case OR: case EXOR:
+				// make desitination regs invalid count increment by one following instructions stall
+				set_reg_status(cpu, stage->rd, 1);
+				break;
+
+			case JUMP:  // ************************************* JUMP ************************************* //
+				break;
+
+			case HALT:  // ************************************* HALT ************************************* //
+				break;
+
+			case NOP:  // ************************************* NOP ************************************* //
+				break;
+
+			default:
+				break;
 		}
 		stage->executed = 1;
 	}
+
 	if (ENABLE_DEBUG_MESSAGES) {
-		print_stage_content("Execute One", stage);
+		print_stage_content("Int FU One", stage);
 	}
 
 	return 0;
 }
 
+
 /*
- * ########################################## EX Two Stage ##########################################
- */
+ * ########################################## Int FU Two Stage ##########################################
+*/
 int int_two_stage(APEX_CPU* cpu) {
 
 	CPU_Stage* stage = &cpu->stage[INT_TWO];
 	stage->executed = 0;
-	if (!stage->stalled) {
+	if ((!stage->stalled)&&(!stage->empty)) {
+		/* Read data from register file for store */
+		switch(stage->inst_type) {
 
-		/* Store */
-		if (strcmp(stage->opcode, "STORE") == 0) {
-			// create memory address using literal and register values
-			stage->mem_address = stage->rs1_value + stage->buffer;
-		}
-		else if (strcmp(stage->opcode, "STR") == 0) {
-			// create memory address using register values
-			stage->mem_address = stage->rs1_value + stage->rs2_value;
-		}
-		else if (strcmp(stage->opcode, "LOAD") == 0) {
-			// create memory address using literal and register values
-			stage->mem_address = stage->rs1_value + stage->buffer;
-		}
-		else if (strcmp(stage->opcode, "LDR") == 0) {
-			// create memory address using register values
-			stage->mem_address = stage->rs1_value + stage->rs2_value;
-		}
-		/* MOVC */
-		else if (strcmp(stage->opcode, "MOVC") == 0) {
-			stage->rd_value = stage->buffer; // move buffer value to rd_value so it can be forwarded
-		}
-		else if (strcmp(stage->opcode, "MOV") == 0) {
-			stage->rd_value = stage->rs1_value; // move rs1_value value to rd_value so it can be forwarded
-		}
-		else if (strcmp(stage->opcode, "ADD") == 0) {
-			// add registers value and keep in rd_value for mem / writeback stage
-			if ((stage->rs2_value > 0 && stage->rs1_value > INT_MAX - stage->rs2_value) ||
-				(stage->rs2_value < 0 && stage->rs1_value < INT_MIN - stage->rs2_value)) {
-				cpu->flags[OF] = 1; // there is an overflow
-			}
-			else {
-				stage->rd_value = stage->rs1_value + stage->rs2_value;
-				cpu->flags[OF] = 0; // there is no overflow
-			}
-		}
-		else if (strcmp(stage->opcode, "ADDL") == 0) {
-			// add literal and register value and keep in rd_value for mem / writeback stage
-			if ((stage->buffer > 0 && stage->rs1_value > INT_MAX - stage->buffer) ||
-				(stage->buffer < 0 && stage->rs1_value < INT_MIN - stage->buffer)) {
-				cpu->flags[OF] = 1; // there is an overflow
-			}
-			else {
-				stage->rd_value = stage->rs1_value + stage->buffer;
-				cpu->flags[OF] = 0; // there is no overflow
-			}
-		}
-		else if (strcmp(stage->opcode, "SUB") == 0) {
-			// sub registers value and keep in rd_value for mem / writeback stage
-			if (stage->rs2_value > stage->rs1_value) {
-				stage->rd_value = stage->rs1_value - stage->rs2_value;
-				cpu->flags[CF] = 1; // there is an carry
-			}
-			else {
-				stage->rd_value = stage->rs1_value - stage->rs2_value;
-				cpu->flags[CF] = 0; // there is no carry
-			}
-		}
-		else if (strcmp(stage->opcode, "SUBL") == 0) {
-			// sub literal and register value and keep in rd_value for mem / writeback stage
-			if (stage->buffer > stage->rs1_value) {
-				stage->rd_value = stage->rs1_value - stage->buffer;
-				cpu->flags[CF] = 1; // there is an carry
-			}
-			else {
-				stage->rd_value = stage->rs1_value - stage->buffer;
-				cpu->flags[CF] = 0; // there is no carry
-			}
-		}
-		else if (strcmp(stage->opcode, "MUL") == 0) {
-			// mul registers value and keep in rd_value for mem / writeback stage
-			stage->rd_value = stage->rs1_value * stage->rs2_value;
-		}
-		else if (strcmp(stage->opcode, "DIV") == 0) {
-			// div registers value and keep in rd_value for mem / writeback stage
-			if (stage->rs2_value != 0) {
-				stage->rd_value = stage->rs1_value / stage->rs2_value;
-			}
-			else {
-				fprintf(stderr, "Division By Zero Returning Value Zero\n");
-				stage->rd_value = 0;
-			}
-		}
-		else if (strcmp(stage->opcode, "AND") == 0) {
-			// mul registers value and keep in rd_value for mem / writeback stage
-			stage->rd_value = stage->rs1_value & stage->rs2_value;
-		}
-		else if (strcmp(stage->opcode, "OR") == 0) {
-			// or registers value and keep in rd_value for mem / writeback stage
-			stage->rd_value = stage->rs1_value | stage->rs2_value;
-		}
-		else if (strcmp(stage->opcode, "EX-OR") == 0) {
-			// ex-or registers value and keep in rd_value for mem / writeback stage
-			stage->rd_value = stage->rs1_value ^ stage->rs2_value;
-		}
-		else if (strcmp(stage->opcode, "BZ") == 0) {
-			// load buffer value to mem_address
-			stage->mem_address = stage->buffer;
-			if (stage->rd_value==0) {
-				// check address validity, pc-add % 4 should be 0
-				if (((stage->pc + stage->mem_address)%4 == 0)&&!((stage->pc + stage->mem_address) < 4000)) {
-					// reset status of rd in exe_one stage
-					// No Need to do this as when EX_ONE will get executed it will have NOP and it wont inc reg valid count
-					// set_reg_status(cpu, cpu->stage[EX_ONE].rd, -1); // make desitination regs valid so following instructions won't stall
-					// flush previous instructions add NOP
-					// add_bubble_to_stage(cpu, EX_ONE, 1); // next cycle Bubble will be executed
-					// add_bubble_to_stage(cpu, DRF, 1); // next cycle Bubble will be executed
-					// add_bubble_to_stage(cpu, F, 1); // next cycle Bubble will be executed
-					// change pc value
-					cpu->pc = stage->pc + stage->mem_address;
-					// un stall Fetch and Decode stage if they are stalled
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
-					// cpu->flags[ZF] = 0;
+			case STORE: case LOAD:  // ************************************* STORE or LOAD ************************************* //
+				// create memory address using literal and register values
+				stage->mem_address = stage->rs1_value + stage->buffer;
+				break;
+
+			case STR: case LDR: // ************************************* STR or LDR ************************************* //
+				// create memory address using two source register values
+				stage->mem_address = stage->rs1_value + stage->rs2_value;
+				break;
+
+			case MOVC:	// ************************************* MOVC ************************************* //
+				// move buffer value to rd_value so it can be forwarded
+				stage->rd_value = stage->buffer;
+				break;
+
+			case MOV:	// ************************************* MOV ************************************* //
+				// move rs1_value value to rd_value so it can be forwarded
+				stage->rd_value = stage->rs1_value;
+				break;
+
+			case ADD:	// ************************************* ADD ************************************* //
+				// add registers value and keep in rd_value for mem / writeback stage
+				if ((stage->rs2_value > 0 && stage->rs1_value > INT_MAX - stage->rs2_value) ||
+					(stage->rs2_value < 0 && stage->rs1_value < INT_MIN - stage->rs2_value)) {
+					cpu->flags[OF] = 1; // there is an overflow
 				}
 				else {
-					fprintf(stderr, "Invalid Branch Loction for %s\n", stage->opcode);
-					fprintf(stderr, "Instruction %s Relative Address %d\n", stage->opcode, cpu->pc + stage->mem_address);
+					stage->rd_value = stage->rs1_value + stage->rs2_value;
+					cpu->flags[OF] = 0; // there is no overflow
 				}
-			}
-		}
-		else if (strcmp(stage->opcode, "BNZ") == 0) {
-			// load buffer value to mem_address
-			stage->mem_address = stage->buffer;
-			if (stage->rd_value!=0) {
-				// check address validity, pc-add % 4 should be 0
-				if (((stage->pc + stage->mem_address)%4 == 0)&&!((stage->pc + stage->mem_address) < 4000)) {
-					// reset status of rd in exe_one stage
-					// No Need to do this as when EX_ONE will get executed it will have NOP and it wont inc reg valid count
-					// set_reg_status(cpu, cpu->stage[EX_ONE].rd, 0); // make desitination regs valid so following instructions won't stall
-					// flush previous instructions add NOP
-					// add_bubble_to_stage(cpu, EX_ONE, 1); // next cycle Bubble will be executed
-					// add_bubble_to_stage(cpu, DRF, 1); // next cycle Bubble will be executed
-					// add_bubble_to_stage(cpu, F, 1); // next cycle Bubble will be executed
-					// change pc value
-					cpu->pc = stage->pc + stage->mem_address;
-					// un stall Fetch and Decode stage if they are stalled
-					cpu->stage[DRF].stalled = 0;
-					cpu->stage[F].stalled = 0;
-					// cpu->flags[ZF] = 0;
+				break;
+
+			case ADDL:	// ************************************* ADDL ************************************* //
+				// add literal and register value and keep in rd_value for mem / writeback stage
+				if ((stage->buffer > 0 && stage->rs1_value > INT_MAX - stage->buffer) ||
+					(stage->buffer < 0 && stage->rs1_value < INT_MIN - stage->buffer)) {
+					cpu->flags[OF] = 1; // there is an overflow
 				}
 				else {
-					fprintf(stderr, "Invalid Branch Loction for %s\n", stage->opcode);
-					fprintf(stderr, "Instruction %s Relative Address %d\n", stage->opcode, cpu->pc + stage->mem_address);
+					stage->rd_value = stage->rs1_value + stage->buffer;
+					cpu->flags[OF] = 0; // there is no overflow
 				}
-			}
-		}
-		else if (strcmp(stage->opcode, "JUMP") == 0) {
-			// load buffer value to mem_address
-			stage->mem_address = stage->rs1_value + stage->buffer;
-			// check address validity, pc-add % 4 should be 0
-			if (((stage->pc + stage->mem_address)%4 == 0)&&!((stage->pc + stage->mem_address) < 4000)) {
-				// reset status of rd in exe_one stage
-				// No Need to do this as when EX_ONE will get executed it will have NOP and it wont inc reg valid count
-				// set_reg_status(cpu, cpu->stage[EX_ONE].rd, -1); // make desitination regs valid so following instructions won't stall
-				// flush previous instructions add NOP
-				// add_bubble_to_stage(cpu, EX_ONE, 1); // next cycle Bubble will be executed
-				// add_bubble_to_stage(cpu, DRF, 1); // next cycle Bubble will be executed
-				// add_bubble_to_stage(cpu, F, 1); // next cycle Bubble will be executed
-				// change pc value
-				cpu->pc = stage->mem_address;
-				// un stall Fetch and Decode stage if they are stalled
-				cpu->stage[DRF].stalled = 0;
-				cpu->stage[F].stalled = 0;
-			}
-			else {
-				fprintf(stderr, "Invalid Branch Loction for %s\n", stage->opcode);
-				fprintf(stderr, "Instruction %s Relative Address %d\n", stage->opcode, cpu->pc + stage->mem_address);
-			}
-		}
-		else if (strcmp(stage->opcode, "HALT") == 0) {
-			; // treat Halt as an interrupt stoped fetching instructions
-		}
-		else if (strcmp(stage->opcode, "NOP") == 0) {
-			; // Do nothing its just a bubble
-		}
-		else {
-			; // Do nothing
+				break;
+
+			case SUB:	// ************************************* SUB ************************************* //
+				// sub registers value and keep in rd_value for mem / writeback stage
+				if (stage->rs2_value > stage->rs1_value) {
+					stage->rd_value = stage->rs1_value - stage->rs2_value;
+					cpu->flags[CF] = 1; // there is an carry
+				}
+				else {
+					stage->rd_value = stage->rs1_value - stage->rs2_value;
+					cpu->flags[CF] = 0; // there is no carry
+				}
+				break;
+
+			case SUBL:	// ************************************* SUBL ************************************* //
+				// sub literal and register value and keep in rd_value for mem / writeback stage
+				if (stage->buffer > stage->rs1_value) {
+					stage->rd_value = stage->rs1_value - stage->buffer;
+					cpu->flags[CF] = 1; // there is an carry
+				}
+				else {
+					stage->rd_value = stage->rs1_value - stage->buffer;
+					cpu->flags[CF] = 0; // there is no carry
+				}
+				break;
+
+			case DIV:	// ************************************* DIV ************************************* //
+				// div registers value and keep in rd_value for mem / writeback stage
+				if (stage->rs2_value != 0) {
+					stage->rd_value = stage->rs1_value / stage->rs2_value;
+				}
+				else {
+					fprintf(stderr, "Division By Zero Returning Value Zero\n");
+					stage->rd_value = 0;
+				}
+				break;
+
+			case AND:	// ************************************* AND ************************************* //
+				// logical AND registers value and keep in rd_value for mem / writeback stage
+				stage->rd_value = stage->rs1_value & stage->rs2_value;
+				break;
+
+			case OR:	// ************************************* OR ************************************* //
+				// logical OR registers value and keep in rd_value for mem / writeback stage
+				stage->rd_value = stage->rs1_value | stage->rs2_value;
+				break;
+
+			case EXOR:	// ************************************* EX-OR ************************************* //
+				// logical OR registers value and keep in rd_value for mem / writeback stage
+				stage->rd_value = stage->rs1_value ^ stage->rs2_value;
+				break;
+
+			case JUMP:  // ************************************* JUMP ************************************* //
+				break;
+
+			case HALT:  // ************************************* HALT ************************************* //
+				break;
+
+			case NOP:  // ************************************* NOP ************************************* //
+				break;
+
+			default:
+				break;
 		}
 		stage->executed = 1;
 	}
+
 	if (ENABLE_DEBUG_MESSAGES) {
-		print_stage_content("Execute Two", stage);
+		print_stage_content("Int FU Two", stage);
 	}
 
 	return 0;
 }
+
 
 /*
- * ########################################## Mem One Stage ##########################################
- */
-int memory_one_stage(APEX_CPU* cpu) {
+ * ########################################## Mul FU One Stage ##########################################
+*/
+int mul_one_stage(APEX_CPU* cpu) {
 
-	CPU_Stage* stage = &cpu->stage[MEM_ONE];
+	CPU_Stage* stage = &cpu->stage[MUL_ONE];
 	stage->executed = 0;
-	if (!stage->stalled) {
+	if ((!stage->stalled)&&(!stage->empty)) {
+		/* Read data from register file for store */
+		switch(stage->inst_type) {
 
-		/* Store */
-		if (strcmp(stage->opcode, "STORE") == 0) {
-			// use memory address and write value in data_memory
-			if (stage->mem_address > DATA_MEMORY_SIZE) {
-				// Segmentation fault
-				fprintf(stderr, "Segmentation fault for writing memory location :: %d\n", stage->mem_address);
-			}
-			else {
-				cpu->data_memory[stage->mem_address] = stage->rd_value;
-			}
-		}
-		else if (strcmp(stage->opcode, "STR") == 0) {
-			// use memory address and write value in data_memory
-			if (stage->mem_address > DATA_MEMORY_SIZE) {
-				// Segmentation fault
-				fprintf(stderr, "Segmentation fault for writing memory location :: %d\n", stage->mem_address);
-			}
-			else {
-				cpu->data_memory[stage->mem_address] = stage->rd_value;
-			}
-		}
-		else if (strcmp(stage->opcode, "LOAD") == 0) {
-			// use memory address and write value in data_memory
-			if (stage->mem_address > DATA_MEMORY_SIZE) {
-				// Segmentation fault
-				fprintf(stderr, "Segmentation fault for accessing memory location :: %d\n", stage->mem_address);
-			}
-			else {
-				stage->rd_value = cpu->data_memory[stage->mem_address];
-			}
-		}
-		else if (strcmp(stage->opcode, "LDR") == 0) {
-			// use memory address and write value in data_memory
-			if (stage->mem_address > DATA_MEMORY_SIZE) {
-				// Segmentation fault
-				fprintf(stderr, "Segmentation fault for accessing memory location :: %d\n", stage->mem_address);
-			}
-			else {
-				stage->rd_value = cpu->data_memory[stage->mem_address];
-			}
-		}
-		/* MOVC */
-		else if (strcmp(stage->opcode, "MOVC") == 0) {
-			// can flags be used to make better decision
-			; // Nothing for now do operation in writeback stage
-		}
-		else if (strcmp(stage->opcode, "MOV") == 0) {
-			// can flags be used to make better decision
-			; // Nothing for now do operation in writeback stage
-		}
-		else if (strcmp(stage->opcode, "ADD") == 0) {
-			// can flags be used to make better decision
-			; // Nothing for now holding rd_value from exe stage
-		}
-		else if (strcmp(stage->opcode, "ADDL") == 0) {
-			// can flags be used to make better decision
-			; // Nothing for now holding rd_value from exe stage
-		}
-		else if (strcmp(stage->opcode, "SUB") == 0) {
-			// can flags be used to make better decision
-			; // Nothing for now holding rd_value from exe stage
-		}
-		else if (strcmp(stage->opcode, "SUBL") == 0) {
-			// can flags be used to make better decision
-			; // Nothing for now holding rd_value from exe stage
-		}
-		else if (strcmp(stage->opcode, "MUL") == 0) {
-			// can flags be used to make better decision
-			; // Nothing for now holding rd_value from exe stage
-		}
-		else if (strcmp(stage->opcode, "DIV") == 0) {
-			// can flags be used to make better decision
-			; // Nothing for now holding rd_value from exe stage
-		}
-		else if (strcmp(stage->opcode, "AND") == 0) {
-			// can flags be used to make better decision
-			; // Nothing for now holding rd_value from exe stage
-		}
-		else if (strcmp(stage->opcode, "OR") == 0) {
-			// can flags be used to make better decision
-			; // Nothing for now holding rd_value from exe stage
-		}
-		else if (strcmp(stage->opcode, "EX-OR") == 0) {
-			// can flags be used to make better decision
-			; // Nothing for now holding rd_value from exe stage
-		}
-		else if (strcmp(stage->opcode, "BZ") == 0) {
-			; // Nothing for now
-		}
-		else if (strcmp(stage->opcode, "BNZ") == 0) {
-			; // Nothing for now
-		}
-		else if (strcmp(stage->opcode, "JUMP") == 0) {
-			; // Nothing for now
-		}
-		else if (strcmp(stage->opcode, "HALT") == 0) {
-			; // Nothing for now
-		}
-		else if (strcmp(stage->opcode, "NOP") == 0) {
-			; // Nothing for now
-		}
-		else {
-			; // Nothing
+			case MUL:  // ************************************* MUL ************************************* //
+				// mul registers value and keep in rd_value for mem / writeback stage
+				// if possible check y it requires 3 cycle
+				stage->rd_value = stage->rs1_value * stage->rs2_value;
+				break;
+
+			default:
+				break;
 		}
 		stage->executed = 1;
 	}
+
 	if (ENABLE_DEBUG_MESSAGES) {
-		print_stage_content("Memory One", stage);
+		print_stage_content("Mul FU One", stage);
 	}
 
 	return 0;
 }
+
 
 /*
- * ########################################## Mem Two Stage ##########################################
- */
-int memory_two_stage(APEX_CPU* cpu) {
+ * ########################################## Mul FU Two Stage ##########################################
+*/
+int mul_two_stage(APEX_CPU* cpu) {
 
-	CPU_Stage* stage = &cpu->stage[MEM_TWO];
+	CPU_Stage* stage = &cpu->stage[MUL_TWO];
 	stage->executed = 0;
-	if (!stage->stalled) {
+	if ((!stage->stalled)&&(!stage->empty)) {
+		/* Read data from register file for store */
+		switch(stage->inst_type) {
 
-		/* Store */
-		if (strcmp(stage->opcode, "STORE") == 0) {
-			// use memory address and write value in data_memory
-			if (stage->mem_address > DATA_MEMORY_SIZE) {
-				// Segmentation fault
-				fprintf(stderr, "Segmentation fault for writing memory location :: %d\n", stage->mem_address);
-			}
-			else {
-				cpu->data_memory[stage->mem_address] = stage->rd_value;
-			}
-		}
-		else if (strcmp(stage->opcode, "STR") == 0) {
-			// use memory address and write value in data_memory
-			if (stage->mem_address > DATA_MEMORY_SIZE) {
-				// Segmentation fault
-				fprintf(stderr, "Segmentation fault for writing memory location :: %d\n", stage->mem_address);
-			}
-			else {
-				cpu->data_memory[stage->mem_address] = stage->rd_value;
-			}
-		}
-		else if (strcmp(stage->opcode, "LOAD") == 0) {
-			// use memory address and write value in data_memory
-			if (stage->mem_address > DATA_MEMORY_SIZE) {
-				// Segmentation fault
-				fprintf(stderr, "Segmentation fault for accessing memory location :: %d\n", stage->mem_address);
-			}
-			else {
-				stage->rd_value = cpu->data_memory[stage->mem_address];
-			}
-		}
-		else if (strcmp(stage->opcode, "LDR") == 0) {
-			// use memory address and write value in data_memory
-			if (stage->mem_address > DATA_MEMORY_SIZE) {
-				// Segmentation fault
-				fprintf(stderr, "Segmentation fault for accessing memory location :: %d\n", stage->mem_address);
-			}
-			else {
-				stage->rd_value = cpu->data_memory[stage->mem_address];
-			}
-		}
-		/* MOVC */
-		else if (strcmp(stage->opcode, "MOVC") == 0) {
-			; // stage->rd_value = stage->buffer; // move buffer value to rd_value so it can be forwarded
-		}
-		else if (strcmp(stage->opcode, "MOV") == 0) {
-			; // stage->rd_value = stage->rs1_value; // move rs1_value value to rd_value so it can be forwarded
-		}
-		else if (strcmp(stage->opcode, "ADD") == 0) {
-			// can flags be used to make better decision
-			; // Nothing for now holding rd_value from exe stage
-		}
-		else if (strcmp(stage->opcode, "ADDL") == 0) {
-			// can flags be used to make better decision
-			; // Nothing for now holding rd_value from exe stage
-		}
-		else if (strcmp(stage->opcode, "SUB") == 0) {
-			// can flags be used to make better decision
-			; // Nothing for now holding rd_value from exe stage
-		}
-		else if (strcmp(stage->opcode, "SUBL") == 0) {
-			// can flags be used to make better decision
-			; // Nothing for now holding rd_value from exe stage
-		}
-		else if (strcmp(stage->opcode, "MUL") == 0) {
-			// can flags be used to make better decision
-			; // Nothing for now holding rd_value from exe stage
-		}
-		else if (strcmp(stage->opcode, "DIV") == 0) {
-			// can flags be used to make better decision
-			; // Nothing for now holding rd_value from exe stage
-		}
-		else if (strcmp(stage->opcode, "AND") == 0) {
-			// can flags be used to make better decision
-			; // Nothing for now holding rd_value from exe stage
-		}
-		else if (strcmp(stage->opcode, "OR") == 0) {
-			// can flags be used to make better decision
-			; // Nothing for now holding rd_value from exe stage
-		}
-		else if (strcmp(stage->opcode, "EX-OR") == 0) {
-			// can flags be used to make better decision
-			; // Nothing for now holding rd_value from exe stage
-		}
-		else if (strcmp(stage->opcode, "BZ") == 0) {
-			; // Nothing for now
-		}
-		else if (strcmp(stage->opcode, "BNZ") == 0) {
-			; // Nothing for now
-		}
-		else if (strcmp(stage->opcode, "JUMP") == 0) {
-			; // Nothing for now
-		}
-		else if (strcmp(stage->opcode, "HALT") == 0) {
-			; // Nothing for now
-		}
-		else if (strcmp(stage->opcode, "NOP") == 0) {
-			; // Nothing for now
-		}
-		else {
-			; // Nothing
+			case MUL:  // ************************************* MUL ************************************* //
+				// mul registers value and keep in rd_value for mem / writeback stage
+				// if possible check y it requires 3 cycle
+				stage->rd_value = stage->rs1_value * stage->rs2_value;
+				break;
+
+			default:
+				break;
 		}
 		stage->executed = 1;
 	}
+
 	if (ENABLE_DEBUG_MESSAGES) {
-		print_stage_content("Memory Two", stage);
+		print_stage_content("Mul FU Two", stage);
 	}
 
 	return 0;
 }
+
+
+/*
+ * ########################################## Mul FU Three Stage ##########################################
+*/
+int mul_three_stage(APEX_CPU* cpu) {
+
+	CPU_Stage* stage = &cpu->stage[MUL_THREE];
+	stage->executed = 0;
+	if ((!stage->stalled)&&(!stage->empty)) {
+		/* Read data from register file for store */
+		switch(stage->inst_type) {
+
+			case MUL:  // ************************************* MUL ************************************* //
+				// mul registers value and keep in rd_value for mem / writeback stage
+				// if possible check y it requires 3 cycle
+				stage->rd_value = stage->rs1_value * stage->rs2_value;
+				break;
+
+			default:
+				break;
+		}
+		stage->executed = 1;
+	}
+
+	if (ENABLE_DEBUG_MESSAGES) {
+		print_stage_content("Mul FU Three", stage);
+	}
+
+	return 0;
+}
+
+
+/*
+ * ########################################## Branch FU Stage ##########################################
+*/
+int branch_stage(APEX_CPU* cpu) {
+
+	CPU_Stage* stage = &cpu->stage[BRANCH];
+	stage->executed = 0;
+	if ((!stage->stalled)&&(!stage->empty)) {
+		/* Read data from register file for store */
+		switch(stage->inst_type) {
+
+			case BZ:  // ************************************* BZ ************************************* //
+				// load buffer value to mem_address
+		  	stage->mem_address = stage->buffer;
+				if (!((stage->pc + stage->mem_address) < 4000)) {
+		      // cpu->pc = stage->pc + stage->mem_address;	// should i change pc value when rob commits Branch Inst
+		      // un stall Fetch and Decode stage if they are stalled
+		      // cpu->stage[DRF].stalled = 0;
+		      // cpu->stage[F].stalled = 0;
+		      // cpu->flags[ZF] = 0;
+		    }
+				else {
+		      fprintf(stderr, "Instruction %s Invalid Relative Address %d\n", stage->opcode, cpu->pc + stage->mem_address);
+		    }
+				break;
+
+			case BNZ:  // ************************************* BNZ ************************************* //
+				// load buffer value to mem_address
+		  	stage->mem_address = stage->buffer;
+				if (!((stage->pc + stage->mem_address) < 4000)) {
+		      // cpu->pc = stage->pc + stage->mem_address;	// should i change pc value when rob commits Branch Inst
+		      // un stall Fetch and Decode stage if they are stalled
+		      // cpu->stage[DRF].stalled = 0;
+		      // cpu->stage[F].stalled = 0;
+		      // cpu->flags[ZF] = 0;
+		    }
+				else {
+		      fprintf(stderr, "Instruction %s Invalid Relative Address %d\n", stage->opcode, cpu->pc + stage->mem_address);
+		    }
+				break;
+
+			default:
+				break;
+		}
+		stage->executed = 1;
+	}
+
+	if (ENABLE_DEBUG_MESSAGES) {
+		print_stage_content("Branch FU", stage);
+	}
+
+	return 0;
+}
+
+
+/*
+ * ########################################## Mem FU Stage ##########################################
+*/
+int mem_stage(APEX_CPU* cpu) {
+
+	CPU_Stage* stage = &cpu->stage[MEM];
+	stage->executed = 0;
+	if ((!stage->stalled)&&(!stage->empty)) {
+		/* Read data from register file for store */
+		switch(stage->inst_type) {
+
+			case STORE: case STR:  // ************************************* STORE or STR ************************************* //
+				// use memory address and write value in data_memory
+				if (stage->mem_address > DATA_MEMORY_SIZE) {
+					// Segmentation fault
+					fprintf(stderr, "Segmentation fault for writing memory location :: %d\n", stage->mem_address);
+				}
+				else {
+					if (stage->stage_cycle == 3) {
+						// wait for 3 cycles
+						cpu->data_memory[stage->mem_address] = stage->rd_value;
+					}
+					else {
+						stage->stage_cycle += 1;
+					}
+				}
+				break;
+
+			case LOAD: case LDR:  // ************************************* LOAD or LDR ************************************* //
+				// use memory address and write value in desc reg
+				if (stage->mem_address > DATA_MEMORY_SIZE) {
+					// Segmentation fault
+					fprintf(stderr, "Segmentation fault for accessing memory location :: %d\n", stage->mem_address);
+				}
+				else {
+					if (stage->stage_cycle == 3) {
+						// wait for 3 cycles
+						stage->rd_value = cpu->data_memory[stage->mem_address];
+					}
+					else {
+						stage->stage_cycle += 1;
+					}
+				}
+				break;
+
+			default:
+				break;
+		}
+
+		if (stage->stage_cycle == 3) {
+			// execution of this stage is only completed after 3 cycles
+			stage->executed = 1;
+		}
+	}
+
+	if (ENABLE_DEBUG_MESSAGES) {
+		print_stage_content("Mem FU", stage);
+	}
+
+	return 0;
+}
+
 
 /*
  * ########################################## Writeback Stage ##########################################
- */
-int writeback(APEX_CPU* cpu) {
-
-	int ret = 0;
+*/
+int writeback_stage(APEX_CPU* cpu) {
 
 	CPU_Stage* stage = &cpu->stage[WB];
 	stage->executed = 0;
-	if (!stage->stalled) {
+	if ((!stage->stalled)&&(!stage->empty)) {
+		/* Read data from register file for store */
+		switch(stage->inst_type) {
 
-		/* Store */
-		if (strcmp(stage->opcode, "STORE") == 0) {
-			; // Nothing for now
-		}
-		else if (strcmp(stage->opcode, "STR") == 0) {
-			; // Nothing for now
-		}
-		else if (strcmp(stage->opcode, "LOAD") == 0) {
-			// use rd address and write value in register
-			if (stage->rd > REGISTER_FILE_SIZE) {
-				// Segmentation fault
-				fprintf(stderr, "Segmentation fault for accessing register location :: %d\n", stage->rd);
-			}
-			else {
-				cpu->regs[stage->rd] = stage->rd_value;
-				set_reg_status(cpu, stage->rd, -1); // make desitination regs valid so following instructions won't stall
-				// also unstall instruction which were dependent on rd reg
-				// values are valid unstall DF and Fetch Stage
-				cpu->stage[DRF].stalled = 0;
-				cpu->stage[F].stalled = 0;
-			}
-		}
-		else if (strcmp(stage->opcode, "LDR") == 0) {
-			// use rd address and write value in register
-			if (stage->rd > REGISTER_FILE_SIZE) {
-				// Segmentation fault
-				fprintf(stderr, "Segmentation fault for accessing register location :: %d\n", stage->rd);
-			}
-			else {
-				cpu->regs[stage->rd] = stage->rd_value;
-				set_reg_status(cpu, stage->rd, -1); // make desitination regs valid so following instructions won't stall
-				// also unstall instruction which were dependent on rd reg
-				// values are valid unstall DF and Fetch Stage
-				cpu->stage[DRF].stalled = 0;
-				cpu->stage[F].stalled = 0;
-			}
-		}
-		/* MOVC */
-		else if (strcmp(stage->opcode, "MOVC") == 0) {
-			// use rd address and write value in register
-			if (stage->rd > REGISTER_FILE_SIZE) {
-				// Segmentation fault
-				fprintf(stderr, "Segmentation fault for accessing register location :: %d\n", stage->rd);
-			}
-			else {
-				cpu->regs[stage->rd] = stage->rd_value;
-				set_reg_status(cpu, stage->rd, -1); // make desitination regs valid so following instructions won't stall
-				// also unstall instruction which were dependent on rd reg
-				// values are valid unstall DF and Fetch Stage
-				cpu->stage[DRF].stalled = 0;
-				cpu->stage[F].stalled = 0;
-			}
-		}
-		else if (strcmp(stage->opcode, "MOV") == 0) {
-			// use rd address and write value in register
-			if (stage->rd > REGISTER_FILE_SIZE) {
-				// Segmentation fault
-				fprintf(stderr, "Segmentation fault for accessing register location :: %d\n", stage->rd);
-			}
-			else {
-				cpu->regs[stage->rd] = stage->rd_value;
-				set_reg_status(cpu, stage->rd, -1); // make desitination regs valid so following instructions won't stall
-				// also unstall instruction which were dependent on rd reg
-				// values are valid unstall DF and Fetch Stage
-				cpu->stage[DRF].stalled = 0;
-				cpu->stage[F].stalled = 0;
-			}
-		}
-		else if (strcmp(stage->opcode, "ADD") == 0) {
-			// use rd address and write value in register
-			if (stage->rd > REGISTER_FILE_SIZE) {
-				// Segmentation fault
-				fprintf(stderr, "Segmentation fault for accessing register location :: %d\n", stage->rd);
-			}
-			else {
-				if (stage->rd_value == 0) {
-					cpu->flags[ZF] = 1; // computation resulted value zero
-				}
-				else {
-					cpu->flags[ZF] = 0; // computation did not resulted value zero
-				}
-				cpu->regs[stage->rd] = stage->rd_value;
-				set_reg_status(cpu, stage->rd, -1); // make desitination regs valid so following instructions won't stall
-				// also unstall instruction which were dependent on rd reg
-				// values are valid unstall DF and Fetch Stage
-				cpu->stage[DRF].stalled = 0;
-				cpu->stage[F].stalled = 0;
-			}
-		}
-		else if (strcmp(stage->opcode, "ADDL") == 0) {
-			// use rd address and write value in register
-			if (stage->rd > REGISTER_FILE_SIZE) {
-				// Segmentation fault
-				fprintf(stderr, "Segmentation fault for accessing register location :: %d\n", stage->rd);
-			}
-			else {
-				if (stage->rd_value == 0) {
-					cpu->flags[ZF] = 1; // computation resulted value zero
-				}
-				else {
-					cpu->flags[ZF] = 0; // computation did not resulted value zero
-				}
-				cpu->regs[stage->rd] = stage->rd_value;
-				set_reg_status(cpu, stage->rd, -1); // make desitination regs valid so following instructions won't stall
-				// also unstall instruction which were dependent on rd reg
-				// values are valid unstall DF and Fetch Stage
-				cpu->stage[DRF].stalled = 0;
-				cpu->stage[F].stalled = 0;
-			}
-		}
-		else if (strcmp(stage->opcode, "SUB") == 0) {
-			// use rd address and write value in register
-			if (stage->rd > REGISTER_FILE_SIZE) {
-				// Segmentation fault
-				fprintf(stderr, "Segmentation fault for accessing register location :: %d\n", stage->rd);
-			}
-			else {
-				if (stage->rd_value == 0) {
-					cpu->flags[ZF] = 1; // computation resulted value zero
-				}
-				else {
-					cpu->flags[ZF] = 0; // computation did not resulted value zero
-				}
-				cpu->regs[stage->rd] = stage->rd_value;
-				set_reg_status(cpu, stage->rd, -1); // make desitination regs valid so following instructions won't stall
-				// also unstall instruction which were dependent on rd reg
-				// values are valid unstall DF and Fetch Stage
-				cpu->stage[DRF].stalled = 0;
-				cpu->stage[F].stalled = 0;
-			}
-		}
-		else if (strcmp(stage->opcode, "SUBL") == 0) {
-			// use rd address and write value in register
-			if (stage->rd > REGISTER_FILE_SIZE) {
-				// Segmentation fault
-				fprintf(stderr, "Segmentation fault for accessing register location :: %d\n", stage->rd);
-			}
-			else {
-				if (stage->rd_value == 0) {
-					cpu->flags[ZF] = 1; // computation resulted value zero
-				}
-				else {
-					cpu->flags[ZF] = 0; // computation did not resulted value zero
-				}
-				cpu->regs[stage->rd] = stage->rd_value;
-				set_reg_status(cpu, stage->rd, -1); // make desitination regs valid so following instructions won't stall
-				// also unstall instruction which were dependent on rd reg
-				// values are valid unstall DF and Fetch Stage
-				cpu->stage[DRF].stalled = 0;
-				cpu->stage[F].stalled = 0;
-			}
-		}
-		else if (strcmp(stage->opcode, "MUL") == 0) {
-			// use rd address and write value in register
-			if (stage->rd > REGISTER_FILE_SIZE) {
-				// Segmentation fault
-				fprintf(stderr, "Segmentation fault for accessing register location :: %d\n", stage->rd);
-			}
-			else {
-				if (stage->rd_value == 0) {
-					cpu->flags[ZF] = 1; // computation resulted value zero
-				}
-				else {
-					cpu->flags[ZF] = 0; // computation did not resulted value zero
-				}
-				cpu->regs[stage->rd] = stage->rd_value;
-				set_reg_status(cpu, stage->rd, -1); // make desitination regs valid so following instructions won't stall
-				// also unstall instruction which were dependent on rd reg
-				// values are valid unstall DF and Fetch Stage
-				cpu->stage[DRF].stalled = 0;
-				cpu->stage[F].stalled = 0;
-			}
-		}
-		else if (strcmp(stage->opcode, "DIV") == 0) {
-			// use rd address and write value in register
-			if (stage->rd > REGISTER_FILE_SIZE) {
-				// Segmentation fault
-				fprintf(stderr, "Segmentation fault for accessing register location :: %d\n", stage->rd);
-			}
-			else {
-				if (stage->rs1_value % stage->rs2_value != 0) {
-					cpu->flags[ZF] = 1; // remainder / operation result is zero
-				}
-				else {
-					cpu->flags[ZF] = 0; // remainder / operation result is not zero
-				}
-				cpu->regs[stage->rd] = stage->rd_value;
-				set_reg_status(cpu, stage->rd, -1); // make desitination regs valid so following instructions won't stall
-				// also un-stall instruction which were dependent on rd reg
-				// values are valid un-stall DF and Fetch Stage
-				cpu->stage[DRF].stalled = 0;
-				cpu->stage[F].stalled = 0;
-			}
-		}
-		else if (strcmp(stage->opcode, "AND") == 0) {
-			// use rd address and write value in register
-			if (stage->rd > REGISTER_FILE_SIZE) {
-				// Segmentation fault
-				fprintf(stderr, "Segmentation fault for accessing register location :: %d\n", stage->rd);
-			}
-			else {
-				cpu->regs[stage->rd] = stage->rd_value;
-				set_reg_status(cpu, stage->rd, -1); // make desitination regs valid so following instructions won't stall
-				// also unstall instruction which were dependent on rd reg
-				// values are valid unstall DF and Fetch Stage
-				cpu->stage[DRF].stalled = 0;
-				cpu->stage[F].stalled = 0;
-			}
-		}
-		else if (strcmp(stage->opcode, "OR") == 0) {
-			// use rd address and write value in register
-			if (stage->rd > REGISTER_FILE_SIZE) {
-				// Segmentation fault
-				fprintf(stderr, "Segmentation fault for accessing register location :: %d\n", stage->rd);
-			}
-			else {
-				cpu->regs[stage->rd] = stage->rd_value;
-				set_reg_status(cpu, stage->rd, -1); // make desitination regs valid so following instructions won't stall
-				// also unstall instruction which were dependent on rd reg
-				// values are valid unstall DF and Fetch Stage
-				cpu->stage[DRF].stalled = 0;
-				cpu->stage[F].stalled = 0;
-			}
-		}
-		else if (strcmp(stage->opcode, "EX-OR") == 0) {
-			// use rd address and write value in register
-			if (stage->rd > REGISTER_FILE_SIZE) {
-				// Segmentation fault
-				fprintf(stderr, "Segmentation fault for accessing register location :: %d\n", stage->rd);
-			}
-			else {
-				cpu->regs[stage->rd] = stage->rd_value;
-				set_reg_status(cpu, stage->rd, -1); // make desitination regs valid so following instructions won't stall
-				// also unstall instruction which were dependent on rd reg
-				// values are valid unstall DF and Fetch Stage
-				cpu->stage[DRF].stalled = 0;
-				cpu->stage[F].stalled = 0;
-			}
-		}
-		else if (strcmp(stage->opcode, "BZ") == 0) {
-			; // Nothing for now
-		}
-		else if (strcmp(stage->opcode, "BNZ") == 0) {
-			; // Nothing for now
-		}
-		else if (strcmp(stage->opcode, "JUMP") == 0) {
-			; // Nothing for now
-		}
-		else if (strcmp(stage->opcode, "HALT") == 0) {
-			ret = HALTED; // return exit code halt to stop simulation
-		}
-		else if (strcmp(stage->opcode, "NOP") == 0) {
-			; // Nothing for now
-		}
-		else {
-			if (strcmp(stage->opcode, "") == 0) {
-				ret = EMPTY; // return exit code empty to stop simulation
-			}
-		}
+			case STORE: case STR:  // ************************************* STORE or STR ************************************* //
+				break;
+			// ************************************* LOAD to EX-OR ************************************* //
+			case LOAD: case LDR: case MOVC: case MOV: case ADD: case ADDL: case SUB: case SUBL: case DIV: case AND: case OR: case EXOR:
+				// make desitination regs invalid count increment by one following instructions stall
+				set_reg_status(cpu, stage->rd, -1);
+				// cpu->regs[stage->rd] = stage->rd_value;
+				// cpu->flags[ZF] = 1; // computation resulted value zero
+				break;
 
+			case JUMP:  // ************************************* JUMP ************************************* //
+				break;
+
+			case HALT:  // ************************************* HALT ************************************* //
+				break;
+
+			case NOP:  // ************************************* NOP ************************************* //
+				break;
+
+			default:
+				break;
+		}
 		stage->executed = 1;
-		cpu->ins_completed++;
+	}
 
-	}
-	// But If Fetch has Something and Decode Has NOP Do Not Un Stall Fetch
-	// Intrupt Flag is set
-	if ((cpu->flags[IF])&&(strcmp(cpu->stage[DRF].opcode, "NOP") == 0)){
-		cpu->stage[F].stalled = 1;
-	}
 	if (ENABLE_DEBUG_MESSAGES) {
 		print_stage_content("Writeback", stage);
 	}
 
-	return ret;
+	return 0;
 }
+
 
 int issue_queue(APEX_CPU* cpu){
 	return 0;
@@ -1657,8 +1271,9 @@ int rob_commit(APEX_CPU* cpu) {
 
 /*
  * ########################################## CPU Run ##########################################
- */
-int APEX_cpu_run(APEX_CPU* cpu, int num_cycle) {
+*/
+
+int APEX_cpu_run(APEX_CPU* cpu, int num_cycle, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APEX_ROB* rob, APEX_RENAME_TABLE* rename_table) {
 
 	int ret = 0;
 

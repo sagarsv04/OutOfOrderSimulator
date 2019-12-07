@@ -40,7 +40,7 @@ int main(int argc, char const* argv[]) {
       strcpy(func, argv[2]);
       num_cycle = atoi(argv[3]);
       if (((strcmp(func, "display") == 0)||(strcmp(func, "simulate")==0))&&(num_cycle>0)) {
-        ret = APEX_cpu_run(cpu, num_cycle);
+        ret = APEX_cpu_run(cpu, num_cycle, ls_queue, issue_queue, rob, rename_table);
         if (ret == SUCCESS) {
           printf("Simulation Complete\n");
         }
@@ -78,7 +78,7 @@ int main(int argc, char const* argv[]) {
           break;
         }
         if (((strcmp(func, "display") == 0)||(strcmp(func, "simulate")==0))&&(num_cycle>0)) {
-          ret = APEX_cpu_run(cpu, num_cycle);
+          ret = APEX_cpu_run(cpu, num_cycle, ls_queue, issue_queue, rob, rename_table);
           if (ret == SUCCESS) {
             printf("Simulation Complete\n");
           }
