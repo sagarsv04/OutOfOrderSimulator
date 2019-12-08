@@ -41,6 +41,8 @@ enum {
 };
 
 enum {
+	INVALID,
+	VALID,
 	SUCCESS,
 	FAILURE,
 	HALTED,
@@ -148,20 +150,6 @@ int APEX_cpu_run(APEX_CPU* cpu, int num_cycle, APEX_LSQ* ls_queue, APEX_IQ* issu
 
 void APEX_cpu_stop(APEX_CPU* cpu);
 
-// ##################### Out-of-Order ##################### //
-
-int fetch(APEX_CPU* cpu);
-
-int decode(APEX_CPU* cpu);
-
-int issue_queue(APEX_CPU* cpu);
-
-int ls_queue(APEX_CPU* cpu);
-
-int cpu_execute(APEX_CPU* cpu); // cpu execute will hav diff FU calls
-
-int rob_commit(APEX_CPU* cpu);
-
 // ##################### Sub calls ##################### //
 
 int int_one_stage(APEX_CPU* cpu);
@@ -176,12 +164,22 @@ int mul_three_stage(APEX_CPU* cpu);
 
 int branch_stage(APEX_CPU* cpu);
 
-int memory_one_stage(APEX_CPU* cpu);
-
-int memory_two_stage(APEX_CPU* cpu);
-
-int memory_three_stage(APEX_CPU* cpu);
+int mem_stage(APEX_CPU* cpu);
 
 int writeback_stage(APEX_CPU* cpu);
+
+// ##################### Out-of-Order ##################### //
+
+int fetch(APEX_CPU* cpu);
+
+int decode(APEX_CPU* cpu);
+
+int dispatch_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APEX_ROB* rob, APEX_RENAME_TABLE* rename_table);
+
+int issue_instruction(APEX_CPU* cpu, APEX_IQ* issue_queue);
+
+int execute_instruction(APEX_CPU* cpu); // cpu execute will hav diff FU calls
+
+int commit_instruction(APEX_CPU* cpu, APEX_ROB* rob, APEX_RENAME_TABLE* rename_table);
 
 #endif

@@ -41,7 +41,7 @@ typedef struct APEX_ROB {
 
 
 /* Format of an ROB entry/update mechanism  */
-typedef struct ROB_update {
+typedef struct ROB_Entry {
 	int inst_type;
 	int executed;
 	int pc;
@@ -54,8 +54,9 @@ typedef struct ROB_update {
 	int rs2;
 	int rs2_value;
 	int rs2_valid;
-	int imm;
-} ROB_update;
+	int buffer;
+	int stage_cycle;
+} ROB_Entry;
 
 
 APEX_ROB* init_reorder_buffer();
@@ -63,9 +64,10 @@ APEX_RENAME_TABLE* init_rename_table();
 void deinit_reorder_buffer(APEX_ROB* rob);
 void deinit_rename_table(APEX_RENAME_TABLE* rename_table);
 
-int add_reorder_buffer_entry(APEX_ROB* rob, APEX_IQ* iq_entry);
+int can_add_entry_in_reorder_buffer(APEX_ROB* rob);
+int add_reorder_buffer_entry(APEX_ROB* rob, ROB_Entry rob_entry);
 
-int update_reorder_buffer_entry_data(APEX_ROB* rob, ROB_update stage_entry);
+int update_reorder_buffer_entry_data(APEX_ROB* rob, ROB_Entry rob_entry);
 int commit_reorder_buffer_entry(APEX_ROB* rob, int* cpu_reg, int* cpu_reg_valid);
 
 void print_rob_rename_content(APEX_ROB* rob, APEX_RENAME_TABLE* rename_table);

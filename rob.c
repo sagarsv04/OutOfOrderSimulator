@@ -13,6 +13,7 @@
 
 #include "rob.h"
 #include "cpu.h"
+#include "forwarding.h"
 
 /*
  * ########################################## Reorder Buffer Stage ##########################################
@@ -53,10 +54,8 @@ void deinit_rename_table(APEX_RENAME_TABLE* rename_table) {
 	free(rename_table);
 }
 
-int add_reorder_buffer_entry(APEX_ROB* rob, APEX_IQ* iq_entry) {
-	// if instruction sucessfully added then only pass the instruction to function units
-	// entry gets added by DRF at the same time dispatching instruction to issue_queue
-	// using iq_entry to add entry so first add to issue_queue and use the same entry to add to rob simultaniously
+
+int can_add_entry_in_reorder_buffer(APEX_ROB* rob) {
 	if (rob->issue_ptr == ROB_SIZE) {
 		rob->issue_ptr = 0; // go back to zero index
 	}
@@ -67,10 +66,29 @@ int add_reorder_buffer_entry(APEX_ROB* rob, APEX_IQ* iq_entry) {
 		return FAILURE;
 	}
 	else {
-		rob->rob_entry[rob->issue_ptr].status = iq_entry->status;
-		rob->rob_entry[rob->issue_ptr].inst_type = iq_entry->inst_type;
-		rob->rob_entry[rob->issue_ptr].inst_ptr = iq_entry->inst_ptr;
-		rob->rob_entry[rob->issue_ptr].rd = iq_entry->rd;
+		return SUCCESS;
+	}
+}
+
+
+int add_reorder_buffer_entry(APEX_ROB* rob, ROB_Entry rob_entry) {
+	// if instruction sucessfully added then only pass the instruction to function units
+	// entry gets added by DRF at the same time dispatching instruction to issue_queue
+	// using rob_entry to add entry so first add to issue_queue and use the same entry to add to rob simultaniously
+	if (rob->issue_ptr == ROB_SIZE) {
+		rob->issue_ptr = 0; // go back to zero index
+	}
+	if (rob->buffer_length == ROB_SIZE) {
+		return FAILURE;
+	}
+	else if (rob->rob_entry[rob->issue_ptr].status) { // checking if enrty if free
+		return FAILURE;
+	}
+	else {
+		rob->rob_entry[rob->issue_ptr].status = VALID;
+		rob->rob_entry[rob->issue_ptr].inst_type = rob_entry.inst_type;
+		rob->rob_entry[rob->issue_ptr].inst_ptr = rob_entry.pc;
+		rob->rob_entry[rob->issue_ptr].rd = rob_entry.rd;
 		rob->rob_entry[rob->issue_ptr].rd_value = -9999;
 		rob->rob_entry[rob->issue_ptr].exception = 0;
 		rob->rob_entry[rob->issue_ptr].valid = 0;
@@ -82,10 +100,10 @@ int add_reorder_buffer_entry(APEX_ROB* rob, APEX_IQ* iq_entry) {
 }
 
 
-int update_reorder_buffer_entry_data(APEX_ROB* rob, ROB_update stage_entry) {
+int update_reorder_buffer_entry_data(APEX_ROB* rob, ROB_Entry rob_entry) {
 	// check the stage data and update the rob data value
 	int update_position = -1;
-	if (!stage_entry.executed) {
+	if (!rob_entry.executed) {
 		return FAILURE;
 	}
 	else {
@@ -95,7 +113,7 @@ int update_reorder_buffer_entry_data(APEX_ROB* rob, ROB_update stage_entry) {
 			// check only alloted entries
 			if (rob->rob_entry[i].status == 1) {
 				// check pc to match instructions
-				if (rob->rob_entry[i].inst_ptr==stage_entry.pc) {
+				if (rob->rob_entry[i].inst_ptr==rob_entry.pc) {
 					update_position = i;
 					break;
 				}
@@ -105,8 +123,8 @@ int update_reorder_buffer_entry_data(APEX_ROB* rob, ROB_update stage_entry) {
 			return FAILURE;
 		}
 		else {
-			if (rob->rob_entry[update_position].rd == stage_entry.rd) {
-				rob->rob_entry[update_position].rd_value = stage_entry.rd_value;
+			if (rob->rob_entry[update_position].rd == rob_entry.rd) {
+				rob->rob_entry[update_position].rd_value = rob_entry.rd_value;
 				rob->rob_entry[update_position].valid = 1;
 			}
 			else {
@@ -133,13 +151,13 @@ int commit_reorder_buffer_entry(APEX_ROB* rob, int* cpu_reg, int* cpu_reg_valid)
 		// decrement reg invalid count in cpu
 		cpu_reg_valid[rob->rob_entry[rob->commit_ptr].rd] -= 1;
 		// free the rob entry
-		rob->rob_entry[rob->commit_ptr].status = 0;
+		rob->rob_entry[rob->commit_ptr].status = INVALID;
 		rob->rob_entry[rob->commit_ptr].inst_type = -9999;
 		rob->rob_entry[rob->commit_ptr].inst_ptr = -9999;
 		rob->rob_entry[rob->commit_ptr].rd = -9999;
 		rob->rob_entry[rob->commit_ptr].rd_value = -9999;
 		rob->rob_entry[rob->commit_ptr].exception = 0;
-		rob->rob_entry[rob->commit_ptr].valid = 0;
+		rob->rob_entry[rob->commit_ptr].valid = INVALID;
 		// decrement buffer_length and increment commit_ptr
 		rob->buffer_length -= 1;
 		rob->commit_ptr += 1;
@@ -151,12 +169,15 @@ int commit_reorder_buffer_entry(APEX_ROB* rob, int* cpu_reg, int* cpu_reg_valid)
 void print_rob_rename_content(APEX_ROB* rob, APEX_RENAME_TABLE* rename_table) {
 
 	if (ENABLE_REG_MEM_STATUS_PRINT) {
+		char* inst_type_str = (char*) malloc(10);
 		printf("\n============ STATE OF REORDER BUFFER ============\n");
 		printf("ROB Buffer Length: %d, Commit Pointer: %d, Issue Pointer: %d\n", rob->buffer_length, rob->commit_ptr, rob->issue_ptr);
-		printf("Index, Status, Type, Rd-value, Exception, Valid\n");
+		printf("Index, Status, Type, OpCode, Rd-value, Exception, Valid\n");
 		for (int i=0;i<ROB_SIZE;i++) {
-			printf("%02d\t|\t%d\t|\t%d\t|\tR%02d-%d\t|\t%d\t|\t%d\n",
-		 					i, rob->rob_entry[i].status, rob->rob_entry[i].inst_type, rob->rob_entry[i].rd, rob->rob_entry[i].rd_value,
+			strcpy(inst_type_str, "");
+			get_inst_name(rob->rob_entry[i].inst_type, inst_type_str);
+			printf("%02d\t|\t%d\t|\t%d\t|\t%s\t|\tR%02d-%d\t|\t%d\t|\t%d\n",
+		 					i, rob->rob_entry[i].status, rob->rob_entry[i].inst_type, inst_type_str, rob->rob_entry[i].rd, rob->rob_entry[i].rd_value,
 							rob->rob_entry[i].exception, rob->rob_entry[i].valid);
 		}
 		printf("\n============ STATE OF RENAME ADDR TABLE ============\n");
@@ -164,5 +185,6 @@ void print_rob_rename_content(APEX_ROB* rob, APEX_RENAME_TABLE* rename_table) {
 		for (int i=0;i<RENAME_TABLE_SIZE;i++) {
 			printf("%02d\t|\t%02d\t|\t%d\n", i, rename_table[i].rob_tag, rename_table[i].tag_valid);
 		}
+	free(inst_type_str);
 	}
 }

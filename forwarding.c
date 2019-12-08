@@ -15,9 +15,7 @@
 
 
 
-char* get_inst_name(int inst_type) {
-
-	char* inst_type_str = "";
+void get_inst_name(int inst_type, char* inst_type_str) {
 
 	switch (inst_type) {
 
@@ -85,7 +83,6 @@ char* get_inst_name(int inst_type) {
 			strcpy(inst_type_str, "INVALID");
 			break;
 	}
-	return inst_type_str;
 }
 
 

@@ -109,7 +109,9 @@ static void print_instruction(CPU_Stage* stage) {
 			break;
 
 		default:
-			printf("<<- %s ->>", stage->opcode);
+			if (!stage->empty) {
+				printf("<<- %s ->>", stage->opcode);
+			}
 			break;
 	}
 }
@@ -1252,19 +1254,177 @@ int writeback_stage(APEX_CPU* cpu) {
 }
 
 
-int issue_queue(APEX_CPU* cpu){
+int dispatch_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APEX_ROB* rob, APEX_RENAME_TABLE* rename_table){
+	// check if ISQ entry is free and ROB entry is free then dispatch the instruction
+	CPU_Stage* stage = &cpu->stage[DRF];
+	if (stage->executed) {
+		int ret = 0;
+		LS_IQ_Entry ls_iq_entry = {
+			.inst_type = stage->inst_type,
+			.executed = stage->executed,
+			.pc = stage->pc,
+			.rd = stage->rd,
+			.rd_value = stage->rd_value,
+			.rd_valid = stage->rd_valid,
+			.rs1 = stage->rs1,
+			.rs1_value = stage->rs1_value,
+			.rs1_valid = stage->rs1_valid,
+			.rs2 = stage->rs2,
+			.rs2_value = stage->rs2_value,
+			.rs2_valid = stage->rs2_valid,
+			.buffer = stage->buffer,
+			.stage_cycle = INVALID}; // so that which issue is called it stalls this just added inst for at least 1 cycyle
+
+		ROB_Entry rob_entry = {
+			.inst_type = stage->inst_type,
+			.executed = stage->executed,
+			.pc = stage->pc,
+			.rd = stage->rd,
+			.rd_value = stage->rd_value,
+			.rd_valid = stage->rd_valid,
+			.rs1 = stage->rs1,
+			.rs1_value = stage->rs1_value,
+			.rs1_valid = stage->rs1_valid,
+			.rs2 = stage->rs2,
+			.rs2_value = stage->rs2_value,
+			.rs2_valid = stage->rs2_valid,
+			.buffer = stage->buffer,
+			.stage_cycle = INVALID};
+
+		switch (stage->inst_type) {
+			case STORE: case STR: case LOAD: case LDR:
+				// add entry to LSQ and ROB
+				// check if LSQ entry is available and rob entry is available
+				if ((can_add_entry_in_ls_queue(ls_queue)==SUCCESS)&&(can_add_entry_in_reorder_buffer(rob)==SUCCESS)) {
+					ret = add_ls_queue_entry(ls_queue, ls_iq_entry);
+					ret = add_reorder_buffer_entry(rob, rob_entry);
+					if(ret!=SUCCESS) {
+						printf("LSQ ROB ENTRY FAILED");
+					}
+				}
+				else{
+					// stall DRF and Fetch stage
+					cpu->stage[DRF].stalled = VALID;
+					cpu->stage[F].stalled = VALID;
+				}
+				break;
+
+			case MOVC ... NOP:
+				// add entry to ISQ and ROB
+				// check if IQ entry is available and rob entry is available
+				if ((can_add_entry_in_issue_queue(issue_queue)==SUCCESS)&&(can_add_entry_in_reorder_buffer(rob)==SUCCESS)) {
+					ret = add_issue_queue_entry(issue_queue, ls_iq_entry);
+					ret = add_reorder_buffer_entry(rob, rob_entry);
+					if(ret!=SUCCESS) {
+						printf("IQ ROB ENTRY FAILED");
+					}
+				}
+				else{
+					// stall DRF and Fetch stage
+					cpu->stage[DRF].stalled = VALID;
+					cpu->stage[F].stalled = VALID;
+				}
+				break;
+
+			default:
+				break;
+		}
+	}
+	else {
+		fprintf(stderr, "Dispatch failed DRF has non executed instruction :: pc(%d) %s\n", stage->pc, stage->opcode);
+	}
+
 	return 0;
 }
 
-int ls_queue(APEX_CPU* cpu) {
+
+int issue_instruction(APEX_CPU* cpu, APEX_IQ* issue_queue){
+	// check if respective FU is free and All Regs Value are Valid then issue the instruction
+	// get issue_index of all the instruction
+	int ret = 0;
+	int issue_index[IQ_SIZE] = {-1};
+	ret = get_issue_queue_index_to_issue(issue_queue, issue_index);
+	if (ret==SUCCESS) {
+		char* inst_type_str = (char*) malloc(10);
+		for (int i; i<IQ_SIZE; i++) {
+			if (issue_index[i]>-1) {
+				int stage_num = -1;
+
+				switch (issue_queue[issue_index[i]].inst_type) {
+
+					case MOVC: case MOV: case ADD: case ADDL: case SUB: case SUBL: case DIV: case AND: case OR: case EXOR:
+						stage_num = INT_ONE;
+						break;
+
+					case MUL:
+						stage_num = MUL_ONE;
+						break;
+
+					case BZ: case BNZ:
+						stage_num = BRANCH;
+						break;
+
+					default:
+						break;
+				}
+				if (stage_num>0) {
+					CPU_Stage* stage = &cpu->stage[stage_num];
+					if ((stage->executed)||(stage->empty)) {
+						if (issue_queue[issue_index[i]].stage_cycle>0) {
+							strcpy(inst_type_str, "");
+							stage->executed = INVALID;
+							stage->empty = INVALID;
+							stage->inst_type = issue_queue[issue_index[i]].inst_type;
+							get_inst_name(stage->inst_type, inst_type_str);
+							strcpy(stage->opcode, inst_type_str);
+							stage->pc = issue_queue[issue_index[i]].inst_ptr;
+							stage->rd = issue_queue[issue_index[i]].rd;
+							stage->rd_value = issue_queue[issue_index[i]].rd_value;
+							stage->rd_valid = INVALID;
+							stage->rs1 = issue_queue[issue_index[i]].rs1;
+							stage->rs1_value = issue_queue[issue_index[i]].rs1_value;
+							stage->rs1_valid = issue_queue[issue_index[i]].rs1_ready;
+							stage->rs2 = issue_queue[issue_index[i]].rs2;
+							stage->rs2_value = issue_queue[issue_index[i]].rs2_value;
+							stage->rs2_valid = issue_queue[issue_index[i]].rs2_ready;
+							stage->buffer = issue_queue[issue_index[i]].literal;
+						}
+						else {
+							issue_queue[issue_index[i]].stage_cycle += 1;
+						}
+					}
+				}
+			}
+		}
+		free(inst_type_str);
+	}
+	else {
+		printf("No Inst To Issue");
+	}
+
 	return 0;
 }
 
-int cpu_execute(APEX_CPU* cpu) {
+
+int execute_instruction(APEX_CPU* cpu) {
+	// check if respective FU has any instructions and execute them
+	// call each unit one by one
+	// branch will be called last idk y ?
+	int_one_stage(cpu);
+	int_two_stage(cpu);
+	mul_one_stage(cpu);
+	mul_two_stage(cpu);
+	mul_three_stage(cpu);
+	branch_stage(cpu);
+	mem_stage(cpu);
+	writeback_stage(cpu);
+
 	return 0;
 }
 
-int rob_commit(APEX_CPU* cpu) {
+
+int commit_instruction(APEX_CPU* cpu, APEX_ROB* rob, APEX_RENAME_TABLE* rename_table) {
+	// check if rob entry is valid and data is valid then commit instruction and free rob entry
 	return 0;
 }
 
@@ -1298,43 +1458,15 @@ int APEX_cpu_run(APEX_CPU* cpu, int num_cycle, APEX_LSQ* ls_queue, APEX_IQ* issu
 
 			int stage_ret = 0;
 			stage_ret = fetch(cpu); // fetch inst from code memory
-			stage_ret = decode(cpu); // decode will have rename and dispatch func call inside
+			stage_ret = decode(cpu);
+			// dispatch func will have rename call inside
+			stage_ret = dispatch_instruction(cpu, ls_queue, issue_queue, rob, rename_table);
+			stage_ret = issue_instruction(cpu, issue_queue);
+			stage_ret = execute_instruction(cpu);
+			stage_ret = commit_instruction(cpu, rob, rename_table);
+			print_ls_iq_content(ls_queue, issue_queue);
+			print_rob_rename_content(rob, rename_table);
 
-			// stage_ret = issue_queue(cpu); // issue will have issue func call inside
-			// // issue will issue load/store to LSQ and rob, then lsq will send inst to mem
-			// // issue will issue other inst to FU and rob
-			// stage_ret = ls_queue(cpu); // lsq will dispatch inst to mem
-			// stage_ret = cpu_execute(cpu); // cpu execute will hav diff FU calls
-			// stage_ret = rob_commit(cpu); // rob to commit inst executed in FU
-			//
-			// // why we are executing from behind ??
-			// stage_ret = writeback(cpu);
-			// if ((stage_ret == HALT) || (stage_ret == EMPTY)) {
-			// 	if (ENABLE_DEBUG_MESSAGES) {
-			// 		print_stage_content("Memory Two", &cpu->stage[MEM_TWO]);
-			// 		print_stage_content("Memory One", &cpu->stage[MEM_ONE]);
-			// 		print_stage_content("Execute Two", &cpu->stage[EX_TWO]);
-			// 		print_stage_content("Execute One", &cpu->stage[EX_ONE]);
-			// 		print_stage_content("Decode/RF", &cpu->stage[DRF]);
-			// 		print_stage_content("Fetch", &cpu->stage[F]);
-			// 	}
-			// 	if (stage_ret == HALTED) {
-			// 		fprintf(stderr, "Simulation Stoped ....\n");
-			// 		printf("Instruction HALT Encountered\n");
-			// 	}
-			// 	else if (stage_ret == EMPTY) {
-			// 		fprintf(stderr, "Simulation Stoped ....\n");
-			// 		printf("No More Instructions Encountered\n");
-			// 	}
-			// 	ret = stage_ret;
-			// 	break; // break when halt is encountered or empty instruction goes to writeback
-			// }
-			// stage_ret = memory_two(cpu);
-			// stage_ret = memory_one(cpu);
-			// stage_ret = execute_two(cpu);
-			// stage_ret = execute_one(cpu);
-			// stage_ret = decode(cpu);
-			// stage_ret = fetch(cpu);
 			if ((stage_ret!=HALT)&&(stage_ret!=SUCCESS)) {
 				ret = stage_ret;
 			}

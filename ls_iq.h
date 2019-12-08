@@ -29,6 +29,7 @@ typedef struct APEX_IQ {
 	int rs2;						// holds src2 reg tag
 	int rs2_ready;			// indicate if src2 is ready
 	int rs2_value;			// holds src2 reg value
+	int stage_cycle;			// holds src2 reg value
 	int lsq_index;			// to address lSQ entry in issue queue
 } APEX_IQ;
 
@@ -39,7 +40,7 @@ typedef struct APEX_LSQ {
 	int load_store;			// indicate if entry is for load or store // use as inst_type
 	int mem_valid;			// indicate if memory address is valid
 	int rd;							// holds destination reg tag
-	int rd_value;			// holds src1 reg value
+	int rd_value;				// holds src1 reg value
 	int data_ready;			// indicate if data is ready
 	int rs1;						// holds src1 reg tag
 	int rs1_value;			// holds src1 reg value
@@ -50,7 +51,7 @@ typedef struct APEX_LSQ {
 
 
 /* Format of an Load Store & Issue Queue entry/update mechanism  */
-typedef struct LS_IQ_update {
+typedef struct LS_IQ_Entry {
 	int inst_type;
 	int executed;
 	int pc;
@@ -63,19 +64,24 @@ typedef struct LS_IQ_update {
 	int rs2;
 	int rs2_value;
 	int rs2_valid;
-	int imm;
-} LS_IQ_update;
+	int buffer;
+	int stage_cycle;
+} LS_IQ_Entry;
 
 
 APEX_IQ* init_issue_queue();
 void deinit_issue_queue(APEX_IQ* issue_queue);
-int add_issue_queue_entry(APEX_IQ* issue_queue, LS_IQ_update stage_entry);
-int update_issue_queue_entry(APEX_IQ* issue_queue, LS_IQ_update stage_entry);
+
+int can_add_entry_in_issue_queue(APEX_IQ* issue_queue);
+int add_issue_queue_entry(APEX_IQ* issue_queue, LS_IQ_Entry ls_iq_entry);
+int update_issue_queue_entry(APEX_IQ* issue_queue, LS_IQ_Entry ls_iq_entry);
 int get_issue_queue_index_to_issue(APEX_IQ* issue_queue, int* issue_index);
 
 APEX_LSQ* init_ls_queue();
 void deinit_ls_queue(APEX_LSQ* ls_queue);
-int add_ls_queue_entry(APEX_LSQ* ls_queue, APEX_IQ* issue_queue);
+
+int can_add_entry_in_ls_queue(APEX_LSQ* ls_queue);
+int add_ls_queue_entry(APEX_LSQ* ls_queue, LS_IQ_Entry ls_iq_entry);
 
 void print_ls_iq_content(APEX_LSQ* ls_queue, APEX_IQ* issue_queue);
 
