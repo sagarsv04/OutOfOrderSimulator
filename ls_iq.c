@@ -33,13 +33,13 @@
 
 APEX_IQ* init_issue_queue() {
 
-	APEX_IQ* issue_queue = malloc(sizeof(*issue_queue)*IQ_SIZE);
+	APEX_IQ* issue_queue = malloc(sizeof(*issue_queue));
 
 	if (!issue_queue) {
 		return NULL;
 	}
 
-	memset(issue_queue, 0, sizeof(APEX_IQ) * IQ_SIZE);  // all issue entry set to 0
+	memset(issue_queue->iq_entries, 0, sizeof(IQ_FORMAT)*IQ_SIZE);  // all issue entry set to 0
 
 	return issue_queue;
 }
@@ -51,7 +51,7 @@ void deinit_issue_queue(APEX_IQ* issue_queue) {
 int can_add_entry_in_issue_queue(APEX_IQ* issue_queue) {
 	int add_position = -1;
 	for (int i=0; i<IQ_SIZE; i++) {
-		if (issue_queue[i].status == INVALID) {
+		if (issue_queue->iq_entries[i].status == INVALID) {
 			add_position = i;
 			break;
 		}
@@ -72,7 +72,7 @@ int add_issue_queue_entry(APEX_IQ* issue_queue, LS_IQ_Entry ls_iq_entry) {
 	}
 	else {
 		for (int i=0; i<IQ_SIZE; i++) {
-			if (issue_queue[i].status == INVALID) {
+			if (issue_queue->iq_entries[i].status == INVALID) {
 				add_position = i;
 				break;
 			}
@@ -81,17 +81,17 @@ int add_issue_queue_entry(APEX_IQ* issue_queue, LS_IQ_Entry ls_iq_entry) {
 			return FAILURE;
 		}
 		else {
-			issue_queue[add_position].status = VALID;
-			issue_queue[add_position].inst_type = ls_iq_entry.inst_type;
-			issue_queue[add_position].inst_ptr = ls_iq_entry.pc;
-			issue_queue[add_position].rd = ls_iq_entry.rd;
-			issue_queue[add_position].rs1 = ls_iq_entry.rs1;
-			issue_queue[add_position].rs1_value = ls_iq_entry.rs1_value;
-			issue_queue[add_position].rs1_ready = ls_iq_entry.rs1_valid;
-			issue_queue[add_position].rs2 = ls_iq_entry.rs2;
-			issue_queue[add_position].rs2_value = ls_iq_entry.rs2_value;
-			issue_queue[add_position].rs2_ready = ls_iq_entry.rs2_valid;
-			issue_queue[add_position].literal = ls_iq_entry.buffer;
+			issue_queue->iq_entries[add_position].status = VALID;
+			issue_queue->iq_entries[add_position].inst_type = ls_iq_entry.inst_type;
+			issue_queue->iq_entries[add_position].inst_ptr = ls_iq_entry.pc;
+			issue_queue->iq_entries[add_position].rd = ls_iq_entry.rd;
+			issue_queue->iq_entries[add_position].rs1 = ls_iq_entry.rs1;
+			issue_queue->iq_entries[add_position].rs1_value = ls_iq_entry.rs1_value;
+			issue_queue->iq_entries[add_position].rs1_ready = ls_iq_entry.rs1_valid;
+			issue_queue->iq_entries[add_position].rs2 = ls_iq_entry.rs2;
+			issue_queue->iq_entries[add_position].rs2_value = ls_iq_entry.rs2_value;
+			issue_queue->iq_entries[add_position].rs2_ready = ls_iq_entry.rs2_valid;
+			issue_queue->iq_entries[add_position].literal = ls_iq_entry.buffer;
 		}
 	}
 	return SUCCESS;
@@ -112,17 +112,17 @@ int update_issue_queue_entry(APEX_IQ* issue_queue, LS_IQ_Entry ls_iq_entry) {
 		// for now loop through entire issue_queue and check
 		for (int i=0; i<IQ_SIZE; i++) {
 			// check only alloted entries
-			if (issue_queue[i].status == VALID) {
+			if (issue_queue->iq_entries[i].status == VALID) {
 				// first check rd ie flow and output dependencies
-				if (ls_iq_entry.rd == issue_queue[i].rs1) {
-					issue_queue[i].rs1_value = ls_iq_entry.rd_value;
-					issue_queue[i].rs1_ready = 1;
+				if (ls_iq_entry.rd == issue_queue->iq_entries[i].rs1) {
+					issue_queue->iq_entries[i].rs1_value = ls_iq_entry.rd_value;
+					issue_queue->iq_entries[i].rs1_ready = 1;
 					// rs1_position[i] = i;
 					rs1_pos_sum += 1;
 				}
-				if (ls_iq_entry.rd == issue_queue[i].rs2) {
-					issue_queue[i].rs2_value = ls_iq_entry.rd_value;
-					issue_queue[i].rs2_ready = 1;
+				if (ls_iq_entry.rd == issue_queue->iq_entries[i].rs2) {
+					issue_queue->iq_entries[i].rs2_value = ls_iq_entry.rd_value;
+					issue_queue->iq_entries[i].rs2_ready = 1;
 					// rs2_position[i] = i;
 					rs2_pos_sum += 1;
 				}
@@ -143,9 +143,9 @@ int get_issue_queue_index_to_issue(APEX_IQ* issue_queue, int* issue_index) {
 	int index_sum = 0;
 	for (int i=0; i<IQ_SIZE; i++) {
 		// check only alloted entries
-		if (issue_queue[i].status == VALID) {
+		if (issue_queue->iq_entries[i].status == VALID) {
 			// first check rd ie flow and output dependencies
-			if ((issue_queue[i].rs1_ready)&&(issue_queue[i].rs2_ready)) {
+			if ((issue_queue->iq_entries[i].rs1_ready)&&(issue_queue->iq_entries[i].rs2_ready)) {
 				issue_index[i] = i;
 				index_sum += 1;
 			}
@@ -165,13 +165,13 @@ int get_issue_queue_index_to_issue(APEX_IQ* issue_queue, int* issue_index) {
 
 APEX_LSQ* init_ls_queue() {
 
-	APEX_LSQ* ls_queue = malloc(sizeof(*ls_queue)*LSQ_SIZE);
+	APEX_LSQ* ls_queue = malloc(sizeof(*ls_queue));
 
 	if (!ls_queue) {
 		return NULL;
 	}
 
-	memset(ls_queue, 0, sizeof(APEX_LSQ) * LSQ_SIZE);  // all issue entry set to 0
+	memset(ls_queue->lsq_entries, 0, sizeof(LSQ_FORMAT)*LSQ_SIZE);  // all issue entry set to 0
 
 	return ls_queue;
 }
@@ -184,7 +184,7 @@ void deinit_ls_queue(APEX_LSQ* ls_queue) {
 int can_add_entry_in_ls_queue(APEX_LSQ* ls_queue) {
 	int add_position = -1;
 	for (int i=0; i<IQ_SIZE; i++) {
-		if (ls_queue[i].status == INVALID) {
+		if (ls_queue->lsq_entries[i].status == INVALID) {
 			add_position = i;
 			break;
 		}
@@ -203,7 +203,7 @@ int add_ls_queue_entry(APEX_LSQ* ls_queue, LS_IQ_Entry ls_iq_entry) {
 	int add_position = -1;
 
 	for (int i=0; i<LSQ_SIZE; i++) {
-		if (ls_queue[i].status == INVALID) {
+		if (ls_queue->lsq_entries[i].status == INVALID) {
 			add_position = i;
 			break;
 		}
@@ -212,16 +212,16 @@ int add_ls_queue_entry(APEX_LSQ* ls_queue, LS_IQ_Entry ls_iq_entry) {
 		return FAILURE;
 	}
 	else {
-		ls_queue[add_position].status = VALID;
-		ls_queue[add_position].load_store = ls_iq_entry.inst_type;
-		ls_queue[add_position].rd = ls_iq_entry.rd;
-		ls_queue[add_position].rd_value = ls_iq_entry.rd_value;
-		ls_queue[add_position].rs1 = ls_iq_entry.rs1;
-		ls_queue[add_position].rs1_value = ls_iq_entry.rs1_value;
-		ls_queue[add_position].rs2 = ls_iq_entry.rs2;
-		ls_queue[add_position].rs2_value = ls_iq_entry.rs2_value;
-		ls_queue[add_position].mem_valid = 0;
-		ls_queue[add_position].data_ready = 0;
+		ls_queue->lsq_entries[add_position].status = VALID;
+		ls_queue->lsq_entries[add_position].load_store = ls_iq_entry.inst_type;
+		ls_queue->lsq_entries[add_position].rd = ls_iq_entry.rd;
+		ls_queue->lsq_entries[add_position].rd_value = ls_iq_entry.rd_value;
+		ls_queue->lsq_entries[add_position].rs1 = ls_iq_entry.rs1;
+		ls_queue->lsq_entries[add_position].rs1_value = ls_iq_entry.rs1_value;
+		ls_queue->lsq_entries[add_position].rs2 = ls_iq_entry.rs2;
+		ls_queue->lsq_entries[add_position].rs2_value = ls_iq_entry.rs2_value;
+		ls_queue->lsq_entries[add_position].mem_valid = 0;
+		ls_queue->lsq_entries[add_position].data_ready = 0;
 	}
 	return SUCCESS;
 }
@@ -235,26 +235,26 @@ void print_ls_iq_content(APEX_LSQ* ls_queue, APEX_IQ* issue_queue) {
 		printf("Index, Status, Type, OpCode, Rd-value, Rs1-value-ready, Rs2-value-ready, LSQ Index\n");
 		for (int i=0;i<IQ_SIZE;i++) {
 			strcpy(inst_type_str, "");
-			get_inst_name(issue_queue[i].inst_type, inst_type_str);
+			get_inst_name(issue_queue->iq_entries[i].inst_type, inst_type_str);
 			printf("%02d\t|\t%d\t|\t%d\t|\t%s\t|\tR%02d-%d\t|\tR%02d-%d-%d\t|\tR%02d-%d-%d\t|\t%02d\n",
-							i, issue_queue[i].status, issue_queue[i].inst_type, inst_type_str, issue_queue[i].rd, issue_queue[i].rd_value,
-							issue_queue[i].rs1, issue_queue[i].rs1_value, issue_queue[i].rs1_ready,
-							issue_queue[i].rs2, issue_queue[i].rs2_value, issue_queue[i].rs2_ready, issue_queue[i].lsq_index);
+							i, issue_queue->iq_entries[i].status, issue_queue->iq_entries[i].inst_type, inst_type_str, issue_queue->iq_entries[i].rd, issue_queue->iq_entries[i].rd_value,
+							issue_queue->iq_entries[i].rs1, issue_queue->iq_entries[i].rs1_value, issue_queue->iq_entries[i].rs1_ready,
+							issue_queue->iq_entries[i].rs2, issue_queue->iq_entries[i].rs2_value, issue_queue->iq_entries[i].rs2_ready, issue_queue->iq_entries[i].lsq_index);
 		}
 		printf("\n============ STATE OF LOAD STORE QUEUE ============\n");
 		printf("Index, Status, Type, OpCode, Mem Valid, Data Ready, Rd-value, Rs1-value, Rs2-value\n");
 		for (int i=0;i<LSQ_SIZE;i++) {
 			strcpy(inst_type_str, "");
-			get_inst_name(ls_queue[i].load_store, inst_type_str);
-			if ((ls_queue[i].load_store==STR) || (ls_queue[i].load_store==LDR)) {
+			get_inst_name(ls_queue->lsq_entries[i].load_store, inst_type_str);
+			if ((ls_queue->lsq_entries[i].load_store==STR) || (ls_queue->lsq_entries[i].load_store==LDR)) {
 				printf("%02d\t|\t%d\t|\t%d\t|\t%s\t|\t%d\t|\t%d\t|\tR%02d-%d\t|\tR%02d-%d\t|\tR%02d-%d\n",
-		 						i, ls_queue[i].status, ls_queue[i].load_store, inst_type_str, ls_queue[i].mem_valid, ls_queue[i].data_ready,
-								ls_queue[i].rd, ls_queue[i].rd_value, ls_queue[i].rs1, ls_queue[i].rs1_value, ls_queue[i].rs2, ls_queue[i].rs2_value);
+		 						i, ls_queue->lsq_entries[i].status, ls_queue->lsq_entries[i].load_store, inst_type_str, ls_queue->lsq_entries[i].mem_valid, ls_queue->lsq_entries[i].data_ready,
+								ls_queue->lsq_entries[i].rd, ls_queue->lsq_entries[i].rd_value, ls_queue->lsq_entries[i].rs1, ls_queue->lsq_entries[i].rs1_value, ls_queue->lsq_entries[i].rs2, ls_queue->lsq_entries[i].rs2_value);
 			}
 			else {
 				printf("%02d\t|\t%d\t|\t%d\t|\t%s\t|\t%d\t|\t%d\t|\tR%02d-%d\t|\tR%02d-%d\t|\t#%02d\n",
-		 						i, ls_queue[i].status, ls_queue[i].load_store, inst_type_str, ls_queue[i].mem_valid, ls_queue[i].data_ready,
-								ls_queue[i].rd, ls_queue[i].rd_value, ls_queue[i].rs1, ls_queue[i].rs1_value, ls_queue[i].literal);
+		 						i, ls_queue->lsq_entries[i].status, ls_queue->lsq_entries[i].load_store, inst_type_str, ls_queue->lsq_entries[i].mem_valid, ls_queue->lsq_entries[i].data_ready,
+								ls_queue->lsq_entries[i].rd, ls_queue->lsq_entries[i].rd_value, ls_queue->lsq_entries[i].rs1, ls_queue->lsq_entries[i].rs1_value, ls_queue->lsq_entries[i].literal);
 			}
 		}
 		free(inst_type_str);

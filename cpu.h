@@ -125,6 +125,8 @@ typedef struct APEX_CPU {
 	int pc;		// current program counter
 	int regs[REGISTER_FILE_SIZE];		// integer register file
 	int regs_invalid[REGISTER_FILE_SIZE];		// integer register valid file
+	int phy_regs[REGISTER_FILE_SIZE];		// integer register file
+	int phy_regs_invalid[REGISTER_FILE_SIZE];		// integer register valid file
 	CPU_Stage stage[NUM_STAGES];		// array of CPU_Stage struct. Note: use . in struct with variable names, use -> when its a pointer
 	APEX_Instruction* code_memory;		// struct pointer where instructions are stored
 	int flags[NUM_FLAG];
@@ -146,7 +148,7 @@ int display(APEX_CPU* cpu, int num_cycle);
 
 void print_cpu_content(APEX_CPU* cpu);
 
-int APEX_cpu_run(APEX_CPU* cpu, int num_cycle, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APEX_ROB* rob, APEX_RENAME_TABLE* rename_table);
+int APEX_cpu_run(APEX_CPU* cpu, int num_cycle, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APEX_ROB* rob, APEX_RENAME* rename_table);
 
 void APEX_cpu_stop(APEX_CPU* cpu);
 
@@ -174,12 +176,12 @@ int fetch(APEX_CPU* cpu);
 
 int decode(APEX_CPU* cpu);
 
-int dispatch_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APEX_ROB* rob, APEX_RENAME_TABLE* rename_table);
+int dispatch_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APEX_ROB* rob, APEX_RENAME* rename_table);
 
 int issue_instruction(APEX_CPU* cpu, APEX_IQ* issue_queue);
 
 int execute_instruction(APEX_CPU* cpu); // cpu execute will hav diff FU calls
 
-int commit_instruction(APEX_CPU* cpu, APEX_ROB* rob, APEX_RENAME_TABLE* rename_table);
+int commit_instruction(APEX_CPU* cpu, APEX_ROB* rob, APEX_RENAME* rename_table);
 
 #endif

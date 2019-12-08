@@ -231,10 +231,10 @@ int previous_arithmetic_check(APEX_CPU* cpu, int func_unit) {
 }
 
 
-
 /*
  * ########################################## Fetch Stage ##########################################
- */
+*/
+
 int fetch(APEX_CPU* cpu) {
 
 	CPU_Stage* stage = &cpu->stage[F];
@@ -298,7 +298,8 @@ int fetch(APEX_CPU* cpu) {
 
 /*
  * ########################################## Decode Stage ##########################################
- */
+*/
+
 int decode(APEX_CPU* cpu) {
 
 	CPU_Stage* stage = &cpu->stage[DRF];
@@ -870,7 +871,6 @@ int int_one_stage(APEX_CPU* cpu) {
 	return 0;
 }
 
-
 /*
  * ########################################## Int FU Two Stage ##########################################
 */
@@ -998,10 +998,10 @@ int int_two_stage(APEX_CPU* cpu) {
 	return 0;
 }
 
-
 /*
  * ########################################## Mul FU One Stage ##########################################
 */
+
 int mul_one_stage(APEX_CPU* cpu) {
 
 	CPU_Stage* stage = &cpu->stage[MUL_ONE];
@@ -1029,10 +1029,10 @@ int mul_one_stage(APEX_CPU* cpu) {
 	return 0;
 }
 
-
 /*
  * ########################################## Mul FU Two Stage ##########################################
 */
+
 int mul_two_stage(APEX_CPU* cpu) {
 
 	CPU_Stage* stage = &cpu->stage[MUL_TWO];
@@ -1060,10 +1060,10 @@ int mul_two_stage(APEX_CPU* cpu) {
 	return 0;
 }
 
-
 /*
  * ########################################## Mul FU Three Stage ##########################################
 */
+
 int mul_three_stage(APEX_CPU* cpu) {
 
 	CPU_Stage* stage = &cpu->stage[MUL_THREE];
@@ -1091,10 +1091,10 @@ int mul_three_stage(APEX_CPU* cpu) {
 	return 0;
 }
 
-
 /*
  * ########################################## Branch FU Stage ##########################################
 */
+
 int branch_stage(APEX_CPU* cpu) {
 
 	CPU_Stage* stage = &cpu->stage[BRANCH];
@@ -1146,10 +1146,10 @@ int branch_stage(APEX_CPU* cpu) {
 	return 0;
 }
 
-
 /*
  * ########################################## Mem FU Stage ##########################################
 */
+
 int mem_stage(APEX_CPU* cpu) {
 
 	CPU_Stage* stage = &cpu->stage[MEM];
@@ -1209,10 +1209,10 @@ int mem_stage(APEX_CPU* cpu) {
 	return 0;
 }
 
-
 /*
  * ########################################## Writeback Stage ##########################################
 */
+
 int writeback_stage(APEX_CPU* cpu) {
 
 	CPU_Stage* stage = &cpu->stage[WB];
@@ -1254,7 +1254,7 @@ int writeback_stage(APEX_CPU* cpu) {
 }
 
 
-int dispatch_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APEX_ROB* rob, APEX_RENAME_TABLE* rename_table){
+int dispatch_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APEX_ROB* rob, APEX_RENAME* rename_table){
 	// check if ISQ entry is free and ROB entry is free then dispatch the instruction
 	CPU_Stage* stage = &cpu->stage[DRF];
 	if (stage->executed) {
@@ -1299,7 +1299,7 @@ int dispatch_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue
 					ret = add_ls_queue_entry(ls_queue, ls_iq_entry);
 					ret = add_reorder_buffer_entry(rob, rob_entry);
 					if(ret!=SUCCESS) {
-						printf("LSQ ROB ENTRY FAILED");
+						printf("LSQ ROB ENTRY FAILED\n");
 					}
 				}
 				else{
@@ -1316,7 +1316,7 @@ int dispatch_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue
 					ret = add_issue_queue_entry(issue_queue, ls_iq_entry);
 					ret = add_reorder_buffer_entry(rob, rob_entry);
 					if(ret!=SUCCESS) {
-						printf("IQ ROB ENTRY FAILED");
+						printf("IQ ROB ENTRY FAILED\n");
 					}
 				}
 				else{
@@ -1331,7 +1331,9 @@ int dispatch_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue
 		}
 	}
 	else {
-		fprintf(stderr, "Dispatch failed DRF has non executed instruction :: pc(%d) %s\n", stage->pc, stage->opcode);
+		if (!stage->empty){
+			fprintf(stderr, "Dispatch failed DRF has non executed instruction :: pc(%d) %s\n", stage->pc, stage->opcode);
+		}
 	}
 
 	return 0;
@@ -1350,7 +1352,7 @@ int issue_instruction(APEX_CPU* cpu, APEX_IQ* issue_queue){
 			if (issue_index[i]>-1) {
 				int stage_num = -1;
 
-				switch (issue_queue[issue_index[i]].inst_type) {
+				switch (issue_queue->iq_entries[issue_index[i]].inst_type) {
 
 					case MOVC: case MOV: case ADD: case ADDL: case SUB: case SUBL: case DIV: case AND: case OR: case EXOR:
 						stage_num = INT_ONE;
@@ -1370,27 +1372,30 @@ int issue_instruction(APEX_CPU* cpu, APEX_IQ* issue_queue){
 				if (stage_num>0) {
 					CPU_Stage* stage = &cpu->stage[stage_num];
 					if ((stage->executed)||(stage->empty)) {
-						if (issue_queue[issue_index[i]].stage_cycle>0) {
+						if (issue_queue->iq_entries[issue_index[i]].stage_cycle>0) {
 							strcpy(inst_type_str, "");
 							stage->executed = INVALID;
 							stage->empty = INVALID;
-							stage->inst_type = issue_queue[issue_index[i]].inst_type;
+							stage->inst_type = issue_queue->iq_entries[issue_index[i]].inst_type;
 							get_inst_name(stage->inst_type, inst_type_str);
 							strcpy(stage->opcode, inst_type_str);
-							stage->pc = issue_queue[issue_index[i]].inst_ptr;
-							stage->rd = issue_queue[issue_index[i]].rd;
-							stage->rd_value = issue_queue[issue_index[i]].rd_value;
+							stage->pc = issue_queue->iq_entries[issue_index[i]].inst_ptr;
+							stage->rd = issue_queue->iq_entries[issue_index[i]].rd;
+							stage->rd_value = issue_queue->iq_entries[issue_index[i]].rd_value;
 							stage->rd_valid = INVALID;
-							stage->rs1 = issue_queue[issue_index[i]].rs1;
-							stage->rs1_value = issue_queue[issue_index[i]].rs1_value;
-							stage->rs1_valid = issue_queue[issue_index[i]].rs1_ready;
-							stage->rs2 = issue_queue[issue_index[i]].rs2;
-							stage->rs2_value = issue_queue[issue_index[i]].rs2_value;
-							stage->rs2_valid = issue_queue[issue_index[i]].rs2_ready;
-							stage->buffer = issue_queue[issue_index[i]].literal;
+							stage->rs1 = issue_queue->iq_entries[issue_index[i]].rs1;
+							stage->rs1_value = issue_queue->iq_entries[issue_index[i]].rs1_value;
+							stage->rs1_valid = issue_queue->iq_entries[issue_index[i]].rs1_ready;
+							stage->rs2 = issue_queue->iq_entries[issue_index[i]].rs2;
+							stage->rs2_value = issue_queue->iq_entries[issue_index[i]].rs2_value;
+							stage->rs2_valid = issue_queue->iq_entries[issue_index[i]].rs2_ready;
+							stage->buffer = issue_queue->iq_entries[issue_index[i]].literal;
+							// remove the entry from issue_queue or mark it as invalid
+							issue_queue->iq_entries[issue_index[i]].status = INVALID;
+							issue_queue->iq_entries[issue_index[i]].stage_cycle = INVALID;
 						}
 						else {
-							issue_queue[issue_index[i]].stage_cycle += 1;
+							issue_queue->iq_entries[issue_index[i]].stage_cycle += 1;
 						}
 					}
 				}
@@ -1399,7 +1404,7 @@ int issue_instruction(APEX_CPU* cpu, APEX_IQ* issue_queue){
 		free(inst_type_str);
 	}
 	else {
-		printf("No Inst To Issue");
+		printf("No Inst To Issue\n");
 	}
 
 	return 0;
@@ -1423,7 +1428,7 @@ int execute_instruction(APEX_CPU* cpu) {
 }
 
 
-int commit_instruction(APEX_CPU* cpu, APEX_ROB* rob, APEX_RENAME_TABLE* rename_table) {
+int commit_instruction(APEX_CPU* cpu, APEX_ROB* rob, APEX_RENAME* rename_table) {
 	// check if rob entry is valid and data is valid then commit instruction and free rob entry
 	return 0;
 }
@@ -1433,7 +1438,7 @@ int commit_instruction(APEX_CPU* cpu, APEX_ROB* rob, APEX_RENAME_TABLE* rename_t
  * ########################################## CPU Run ##########################################
 */
 
-int APEX_cpu_run(APEX_CPU* cpu, int num_cycle, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APEX_ROB* rob, APEX_RENAME_TABLE* rename_table) {
+int APEX_cpu_run(APEX_CPU* cpu, int num_cycle, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APEX_ROB* rob, APEX_RENAME* rename_table) {
 
 	int ret = 0;
 
@@ -1470,7 +1475,7 @@ int APEX_cpu_run(APEX_CPU* cpu, int num_cycle, APEX_LSQ* ls_queue, APEX_IQ* issu
 			if ((stage_ret!=HALT)&&(stage_ret!=SUCCESS)) {
 				ret = stage_ret;
 			}
-			push_stages(cpu);
+			push_func_unit_stages(cpu);
 		}
 	}
 

@@ -29,7 +29,7 @@ int main(int argc, char const* argv[]) {
     APEX_LSQ* ls_queue = init_ls_queue();
     APEX_IQ* issue_queue = init_issue_queue();
     APEX_ROB* rob = init_reorder_buffer();
-    APEX_RENAME_TABLE* rename_table = init_rename_table();
+    APEX_RENAME* rename_table = init_rename_table();
 
     if ((!cpu)||(!issue_queue)||(!ls_queue)||(!rob)||(!rename_table)) {
       fprintf(stderr, "APEX_Error : Unable to initialize CPU\n");

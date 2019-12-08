@@ -16,7 +16,7 @@
 
 
 /* Format of an APEX Issue Queue mechanism  */
-typedef struct APEX_IQ {
+typedef struct IQ_FORMAT {
 	int status;					// indicate if entry is free or allocated
 	int inst_type;			// indicate instruction type
 	int inst_ptr;				// indicate pc value of instruction
@@ -31,11 +31,11 @@ typedef struct APEX_IQ {
 	int rs2_value;			// holds src2 reg value
 	int stage_cycle;			// holds src2 reg value
 	int lsq_index;			// to address lSQ entry in issue queue
-} APEX_IQ;
+} IQ_FORMAT;
 
 
 /* Format of an APEX Load Strore Queue mechanism  */
-typedef struct APEX_LSQ {
+typedef struct LSQ_FORMAT {
 	int status;					// indicate if entry is free or allocated
 	int load_store;			// indicate if entry is for load or store // use as inst_type
 	int mem_valid;			// indicate if memory address is valid
@@ -47,8 +47,17 @@ typedef struct APEX_LSQ {
 	int rs2;						// holds src1 reg tag
 	int rs2_value;			// holds src1 reg value
 	int literal;				// hold literal value
-} APEX_LSQ;
+} LSQ_FORMAT;
 
+
+typedef struct APEX_IQ {
+	IQ_FORMAT iq_entries[IQ_SIZE];
+}APEX_IQ;
+
+
+typedef struct APEX_LSQ {
+	LSQ_FORMAT lsq_entries[LSQ_SIZE];
+}APEX_LSQ;
 
 /* Format of an Load Store & Issue Queue entry/update mechanism  */
 typedef struct LS_IQ_Entry {

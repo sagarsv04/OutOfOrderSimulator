@@ -95,25 +95,32 @@ void clear_stage_entry(APEX_CPU* cpu, int stage_index){
 	cpu->stage[stage_index].rs2 = -9999;
 	cpu->stage[stage_index].rs2_valid = 0;
 	cpu->stage[stage_index].inst_type = -9999;
-	cpu->stage[stage_index].pc = -9999;
+	cpu->stage[stage_index].pc = 0;
+	cpu->stage[stage_index].empty = 1;
+	strcpy(cpu->stage[stage_index].opcode, "");
 }
 
 
-void add_bubble_to_stage(APEX_CPU* cpu, int stage_index, int flushed) {
+void add_bubble_to_stage(APEX_CPU* cpu, int stage_index) {
 	// Add bubble to cpu stage
-	// NOTE: don't call this function with stage_index F
 	clear_stage_entry(cpu, stage_index);
 	strcpy(cpu->stage[stage_index].opcode, "NOP"); // add a Bubble
 	cpu->stage[stage_index].inst_type = NOP;
 	cpu->code_memory_size = cpu->code_memory_size + 1;
-	if (flushed){
-		// this is used to tell a diff between Branch flushed and software delaying
-		cpu->stage[stage_index].empty = 1;
-	}
+	cpu->stage[stage_index].empty = 0;
 }
 
 
-void push_stages(APEX_CPU* cpu) {
+void push_func_unit_stages(APEX_CPU* cpu){
+
+	cpu->stage[MUL_THREE] = cpu->stage[MUL_TWO];
+	cpu->stage[MUL_TWO] = cpu->stage[MUL_ONE];
+	// and empty the MUL_ONE stage
+	clear_stage_entry(cpu, MUL_ONE);
+
+	cpu->stage[INT_TWO] = cpu->stage[INT_ONE];
+	// and empty the MUL_ONE stage
+	clear_stage_entry(cpu, INT_ONE);
 
 	if (!cpu->stage[F].stalled) {
 		clear_stage_entry(cpu, DRF);
@@ -121,47 +128,8 @@ void push_stages(APEX_CPU* cpu) {
 		cpu->stage[DRF].executed = 0;
 	}
 	else {
-		add_bubble_to_stage(cpu, DRF, 0);
+		add_bubble_to_stage(cpu, DRF);
 	}
-	// cpu->stage[WB].executed = 0;
-	// cpu->stage[MEM_TWO] = cpu->stage[MEM_ONE];
-	// cpu->stage[MEM_TWO].executed = 0;
-	// cpu->stage[MEM_ONE] = cpu->stage[EX_TWO];
-	// cpu->stage[MEM_ONE].executed = 0;
-	// cpu->stage[EX_TWO] = cpu->stage[EX_ONE];
-	// cpu->stage[EX_TWO].executed = 0;
-	// if (!cpu->stage[DRF].stalled) {
-	// 	cpu->stage[EX_ONE] = cpu->stage[DRF];
-	// 	cpu->stage[EX_ONE].executed = 0;
-	// }
-	// else {
-	// 	add_bubble_to_stage(cpu, EX_ONE, 0); // next cycle Bubble will be executed
-	// 	cpu->stage[EX_ONE].executed = 0;
-	// }
-	// if (!cpu->stage[F].stalled) {
-	// 	cpu->stage[DRF].rd = -99;
-	// 	cpu->stage[DRF].rs1 = -99;
-	// 	cpu->stage[DRF].rs2 = -99;
-	// 	cpu->stage[DRF] = cpu->stage[F];
-	// 	cpu->stage[DRF].executed = 0;
-	// }
-	// else if (!cpu->stage[DRF].stalled) {
-	// 	add_bubble_to_stage(cpu, DRF, 0); // next cycle Bubble will be executed
-	// 	cpu->stage[DRF].executed = 0;
-	// }
-	// if (ENABLE_PUSH_STAGE_PRINT) {
-	// 	printf("\n--------------------------------\n");
-	// 	printf("Clock Cycle #: %d Instructions Pushed\n", cpu->clock);
-	// 	printf("%-15s: Executed: Instruction\n", "Stage");
-	// 	printf("--------------------------------\n");
-	// 	print_stage_content("Writeback", &cpu->stage[WB]);
-	// 	print_stage_content("Memory Two", &cpu->stage[MEM_TWO]);
-	// 	print_stage_content("Memory One", &cpu->stage[MEM_ONE]);
-	// 	print_stage_content("Execute Two", &cpu->stage[EX_TWO]);
-	// 	print_stage_content("Execute One", &cpu->stage[EX_ONE]);
-	// 	print_stage_content("Decode/RF", &cpu->stage[DRF]);
-	// 	print_stage_content("Fetch", &cpu->stage[F]);
-	// }
 }
 
 

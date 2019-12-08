@@ -26,7 +26,7 @@ APEX_ROB* init_reorder_buffer() {
 		return NULL;
 	}
 
-	memset(rob->rob_entry, 0, sizeof(APEX_ROB_ENTRY) * ROB_SIZE);  // all rob entry set to 0
+	memset(rob->rob_entry, 0, sizeof(APEX_ROB_ENTRY)*ROB_SIZE);  // all rob entry set to 0
 	rob->commit_ptr = 0; // rob commit pointer set to 0
 	rob->issue_ptr = 0; // rob issue pointer set to 0
 	rob->buffer_length  = 0; // rob buffer length set to 0
@@ -34,14 +34,15 @@ APEX_ROB* init_reorder_buffer() {
 	return rob;
 }
 
-APEX_RENAME_TABLE* init_rename_table() {
+APEX_RENAME* init_rename_table() {
 
-	APEX_RENAME_TABLE* rename_table = malloc(sizeof(*rename_table) * RENAME_TABLE_SIZE);
+	APEX_RENAME* rename_table = malloc(sizeof(*rename_table));
 	if (!rename_table) {
 		return NULL;
 	}
 
-	memset(rename_table, 0, sizeof(APEX_RENAME_TABLE) * RENAME_TABLE_SIZE);  // all rename table entry set to 0
+	memset(rename_table->reg_rename, 0, sizeof(APEX_RENAME_TABLE)*RENAME_TABLE_SIZE);  // all rename table entry set to 0
+	memset(rename_table->arf_rename, 0, sizeof(APEX_ARF_TABLE)*RENAME_TABLE_SIZE);  // all rename table entry set to 0
 
 	return rename_table;
 }
@@ -50,7 +51,7 @@ void deinit_reorder_buffer(APEX_ROB* rob) {
 	free(rob);
 }
 
-void deinit_rename_table(APEX_RENAME_TABLE* rename_table) {
+void deinit_rename_table(APEX_RENAME* rename_table) {
 	free(rename_table);
 }
 
@@ -166,7 +167,7 @@ int commit_reorder_buffer_entry(APEX_ROB* rob, int* cpu_reg, int* cpu_reg_valid)
 }
 
 
-void print_rob_rename_content(APEX_ROB* rob, APEX_RENAME_TABLE* rename_table) {
+void print_rob_rename_content(APEX_ROB* rob, APEX_RENAME* rename_table) {
 
 	if (ENABLE_REG_MEM_STATUS_PRINT) {
 		char* inst_type_str = (char*) malloc(10);
@@ -183,7 +184,7 @@ void print_rob_rename_content(APEX_ROB* rob, APEX_RENAME_TABLE* rename_table) {
 		printf("\n============ STATE OF RENAME ADDR TABLE ============\n");
 		printf("Index, Tag, Valid\n");
 		for (int i=0;i<RENAME_TABLE_SIZE;i++) {
-			printf("%02d\t|\t%02d\t|\t%d\n", i, rename_table[i].rob_tag, rename_table[i].tag_valid);
+			printf("%02d\t|\t%02d\t|\t%d\n", i, rename_table->arf_rename[i].rob_tag, rename_table->arf_rename[i].tag_valid);
 		}
 	free(inst_type_str);
 	}

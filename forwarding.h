@@ -23,8 +23,8 @@ typedef struct APEX_Forward {
 
 void get_inst_name(int inst_type, char* inst_type_str);
 void clear_stage_entry(APEX_CPU* cpu, int stage_index);
-void add_bubble_to_stage(APEX_CPU* cpu, int stage_index, int flushed);
-void push_stages(APEX_CPU* cpu);
+void add_bubble_to_stage(APEX_CPU* cpu, int stage_index);
+void push_func_unit_stages(APEX_CPU* cpu);
 APEX_Forward get_cpu_forwarding_status(APEX_CPU* cpu, CPU_Stage* stage);
 
 

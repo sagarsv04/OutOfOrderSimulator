@@ -27,10 +27,18 @@ typedef struct APEX_ROB_ENTRY {
 	int valid;					// indicate if instruction is ready to commit
 } APEX_ROB_ENTRY;
 
-typedef struct APEX_RENAME_TABLE {
+
+typedef struct APEX_ARF_TABLE {
 	int tag_valid;				// tells if rename table points to valid rob entry
 	int rob_tag;					// holds the index of rob entry ie issue_ptr
+}APEX_ARF_TABLE;
+
+
+typedef struct APEX_RENAME_TABLE {
+	int tag_valid;				// tells if rename table points to valid rob entry
+	int rename_tag;					// holds the index of rob entry ie issue_ptr
 } APEX_RENAME_TABLE;
+
 
 typedef struct APEX_ROB {
 	int commit_ptr;				  // pointer index for commit rob entry
@@ -38,6 +46,12 @@ typedef struct APEX_ROB {
 	int buffer_length;			// rob buffer length
 	APEX_ROB_ENTRY rob_entry[ROB_SIZE];					// array of ROB_SIZE rob entry struct. Note: use . in struct with variable names, use -> when its a pointer
 } APEX_ROB;
+
+
+typedef struct APEX_RENAME {
+	APEX_RENAME_TABLE reg_rename[RENAME_TABLE_SIZE];
+	APEX_ARF_TABLE arf_rename[RENAME_TABLE_SIZE];
+} APEX_RENAME;
 
 
 /* Format of an ROB entry/update mechanism  */
@@ -60,9 +74,9 @@ typedef struct ROB_Entry {
 
 
 APEX_ROB* init_reorder_buffer();
-APEX_RENAME_TABLE* init_rename_table();
+APEX_RENAME* init_rename_table();
 void deinit_reorder_buffer(APEX_ROB* rob);
-void deinit_rename_table(APEX_RENAME_TABLE* rename_table);
+void deinit_rename_table(APEX_RENAME* rename_table);
 
 int can_add_entry_in_reorder_buffer(APEX_ROB* rob);
 int add_reorder_buffer_entry(APEX_ROB* rob, ROB_Entry rob_entry);
@@ -70,6 +84,6 @@ int add_reorder_buffer_entry(APEX_ROB* rob, ROB_Entry rob_entry);
 int update_reorder_buffer_entry_data(APEX_ROB* rob, ROB_Entry rob_entry);
 int commit_reorder_buffer_entry(APEX_ROB* rob, int* cpu_reg, int* cpu_reg_valid);
 
-void print_rob_rename_content(APEX_ROB* rob, APEX_RENAME_TABLE* rename_table);
+void print_rob_rename_content(APEX_ROB* rob, APEX_RENAME* rename_table);
 
  #endif
