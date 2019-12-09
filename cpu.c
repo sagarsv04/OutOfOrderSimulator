@@ -1309,7 +1309,7 @@ int dispatch_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue
 				}
 				break;
 
-			case MOVC ... NOP:
+			case MOVC ... JUMP:
 				// add entry to ISQ and ROB
 				// check if IQ entry is available and rob entry is available
 				if ((can_add_entry_in_issue_queue(issue_queue)==SUCCESS)&&(can_add_entry_in_reorder_buffer(rob)==SUCCESS)) {
@@ -1369,34 +1369,29 @@ int issue_instruction(APEX_CPU* cpu, APEX_IQ* issue_queue){
 					default:
 						break;
 				}
-				if (stage_num>0) {
+				if (stage_num>DRF) {
 					CPU_Stage* stage = &cpu->stage[stage_num];
 					if ((stage->executed)||(stage->empty)) {
-						if (issue_queue->iq_entries[issue_index[i]].stage_cycle>0) {
-							strcpy(inst_type_str, "");
-							stage->executed = INVALID;
-							stage->empty = INVALID;
-							stage->inst_type = issue_queue->iq_entries[issue_index[i]].inst_type;
-							get_inst_name(stage->inst_type, inst_type_str);
-							strcpy(stage->opcode, inst_type_str);
-							stage->pc = issue_queue->iq_entries[issue_index[i]].inst_ptr;
-							stage->rd = issue_queue->iq_entries[issue_index[i]].rd;
-							stage->rd_value = issue_queue->iq_entries[issue_index[i]].rd_value;
-							stage->rd_valid = INVALID;
-							stage->rs1 = issue_queue->iq_entries[issue_index[i]].rs1;
-							stage->rs1_value = issue_queue->iq_entries[issue_index[i]].rs1_value;
-							stage->rs1_valid = issue_queue->iq_entries[issue_index[i]].rs1_ready;
-							stage->rs2 = issue_queue->iq_entries[issue_index[i]].rs2;
-							stage->rs2_value = issue_queue->iq_entries[issue_index[i]].rs2_value;
-							stage->rs2_valid = issue_queue->iq_entries[issue_index[i]].rs2_ready;
-							stage->buffer = issue_queue->iq_entries[issue_index[i]].literal;
-							// remove the entry from issue_queue or mark it as invalid
-							issue_queue->iq_entries[issue_index[i]].status = INVALID;
-							issue_queue->iq_entries[issue_index[i]].stage_cycle = INVALID;
-						}
-						else {
-							issue_queue->iq_entries[issue_index[i]].stage_cycle += 1;
-						}
+						strcpy(inst_type_str, "");
+						stage->executed = INVALID;
+						stage->empty = INVALID;
+						stage->inst_type = issue_queue->iq_entries[issue_index[i]].inst_type;
+						get_inst_name(stage->inst_type, inst_type_str);
+						strcpy(stage->opcode, inst_type_str);
+						stage->pc = issue_queue->iq_entries[issue_index[i]].inst_ptr;
+						stage->rd = issue_queue->iq_entries[issue_index[i]].rd;
+						stage->rd_value = issue_queue->iq_entries[issue_index[i]].rd_value;
+						stage->rd_valid = INVALID;
+						stage->rs1 = issue_queue->iq_entries[issue_index[i]].rs1;
+						stage->rs1_value = issue_queue->iq_entries[issue_index[i]].rs1_value;
+						stage->rs1_valid = issue_queue->iq_entries[issue_index[i]].rs1_ready;
+						stage->rs2 = issue_queue->iq_entries[issue_index[i]].rs2;
+						stage->rs2_value = issue_queue->iq_entries[issue_index[i]].rs2_value;
+						stage->rs2_valid = issue_queue->iq_entries[issue_index[i]].rs2_ready;
+						stage->buffer = issue_queue->iq_entries[issue_index[i]].literal;
+						// remove the entry from issue_queue or mark it as invalid
+						issue_queue->iq_entries[issue_index[i]].status = INVALID;
+						issue_queue->iq_entries[issue_index[i]].stage_cycle = INVALID;
 					}
 				}
 			}
@@ -1415,6 +1410,7 @@ int execute_instruction(APEX_CPU* cpu) {
 	// check if respective FU has any instructions and execute them
 	// call each unit one by one
 	// branch will be called last idk y ?
+	writeback_stage(cpu);
 	int_one_stage(cpu);
 	int_two_stage(cpu);
 	mul_one_stage(cpu);
@@ -1422,7 +1418,6 @@ int execute_instruction(APEX_CPU* cpu) {
 	mul_three_stage(cpu);
 	branch_stage(cpu);
 	mem_stage(cpu);
-	writeback_stage(cpu);
 
 	return 0;
 }
@@ -1462,13 +1457,14 @@ int APEX_cpu_run(APEX_CPU* cpu, int num_cycle, APEX_LSQ* ls_queue, APEX_IQ* issu
 			}
 
 			int stage_ret = 0;
-			stage_ret = fetch(cpu); // fetch inst from code memory
-			stage_ret = decode(cpu);
-			// dispatch func will have rename call inside
-			stage_ret = dispatch_instruction(cpu, ls_queue, issue_queue, rob, rename_table);
-			stage_ret = issue_instruction(cpu, issue_queue);
-			stage_ret = execute_instruction(cpu);
 			stage_ret = commit_instruction(cpu, rob, rename_table);
+			stage_ret = execute_instruction(cpu);
+			stage_ret = issue_instruction(cpu, issue_queue);
+			stage_ret =
+			dispatch_instruction(cpu, ls_queue, issue_queue, rob, rename_table);
+			stage_ret = decode(cpu);
+			stage_ret = fetch(cpu); // fetch inst from code memory
+			// dispatch func will have rename call inside
 			print_ls_iq_content(ls_queue, issue_queue);
 			print_rob_rename_content(rob, rename_table);
 

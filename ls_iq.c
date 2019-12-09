@@ -92,6 +92,7 @@ int add_issue_queue_entry(APEX_IQ* issue_queue, LS_IQ_Entry ls_iq_entry) {
 			issue_queue->iq_entries[add_position].rs2_value = ls_iq_entry.rs2_value;
 			issue_queue->iq_entries[add_position].rs2_ready = ls_iq_entry.rs2_valid;
 			issue_queue->iq_entries[add_position].literal = ls_iq_entry.buffer;
+			issue_queue->iq_entries[add_position].stage_cycle = INVALID;
 		}
 	}
 	return SUCCESS;
@@ -144,11 +145,43 @@ int get_issue_queue_index_to_issue(APEX_IQ* issue_queue, int* issue_index) {
 	for (int i=0; i<IQ_SIZE; i++) {
 		// check only alloted entries
 		if (issue_queue->iq_entries[i].status == VALID) {
-			// first check rd ie flow and output dependencies
-			if ((issue_queue->iq_entries[i].rs1_ready)&&(issue_queue->iq_entries[i].rs2_ready)) {
-				issue_index[i] = i;
-				index_sum += 1;
+			// check if instructions have been in IQ for atleast one cycle
+			if (issue_queue->iq_entries[i].stage_cycle>0) {
+				switch (issue_queue->iq_entries[i].inst_type) {
+
+					// check no src reg instructions
+					case MOVC: case BZ: case BNZ:
+						issue_index[i] = i;
+						index_sum += 1;
+						break;
+
+					// check single src reg instructions
+					case MOV: case ADDL: case SUBL: case JUMP:
+						if (issue_queue->iq_entries[i].rs1_ready) {
+							issue_index[i] = i;
+							index_sum += 1;
+						}
+						break;
+
+					// check two src reg instructions
+					case ADD: case SUB: case MUL: case DIV: case AND: case OR: case EXOR:
+						if ((issue_queue->iq_entries[i].rs1_ready)&&(issue_queue->iq_entries[i].rs2_ready)) {
+							issue_index[i] = i;
+							index_sum += 1;
+						}
+						break;
+
+					default:
+						break;
+				}
 			}
+			else {
+				issue_queue->iq_entries[i].stage_cycle += 1;
+			}
+		}
+		else {
+			// even if inst is invalid inc stage cycle to know how long inst has been in IQ
+			issue_queue->iq_entries[i].stage_cycle += 1;
 		}
 	}
 	if (index_sum == 0) {
@@ -220,8 +253,10 @@ int add_ls_queue_entry(APEX_LSQ* ls_queue, LS_IQ_Entry ls_iq_entry) {
 		ls_queue->lsq_entries[add_position].rs1_value = ls_iq_entry.rs1_value;
 		ls_queue->lsq_entries[add_position].rs2 = ls_iq_entry.rs2;
 		ls_queue->lsq_entries[add_position].rs2_value = ls_iq_entry.rs2_value;
-		ls_queue->lsq_entries[add_position].mem_valid = 0;
-		ls_queue->lsq_entries[add_position].data_ready = 0;
+		ls_queue->lsq_entries[add_position].literal = ls_iq_entry.buffer;
+		ls_queue->lsq_entries[add_position].mem_valid = INVALID;
+		ls_queue->lsq_entries[add_position].data_ready = INVALID;
+		ls_queue->lsq_entries[add_position].stage_cycle = INVALID;
 	}
 	return SUCCESS;
 }

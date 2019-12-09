@@ -47,6 +47,7 @@ typedef struct LSQ_FORMAT {
 	int rs2;						// holds src1 reg tag
 	int rs2_value;			// holds src1 reg value
 	int literal;				// hold literal value
+	int stage_cycle;
 } LSQ_FORMAT;
 
 
