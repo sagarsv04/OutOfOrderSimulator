@@ -29,7 +29,7 @@ typedef struct IQ_FORMAT {
 	int rs2;						// holds src2 reg tag
 	int rs2_ready;			// indicate if src2 is ready
 	int rs2_value;			// holds src2 reg value
-	int stage_cycle;			// holds src2 reg value
+	int stage_cycle;		// holds src2 reg value
 	int lsq_index;			// to address lSQ entry in issue queue
 } IQ_FORMAT;
 
@@ -83,7 +83,8 @@ APEX_IQ* init_issue_queue();
 void deinit_issue_queue(APEX_IQ* issue_queue);
 
 int can_add_entry_in_issue_queue(APEX_IQ* issue_queue);
-int add_issue_queue_entry(APEX_IQ* issue_queue, LS_IQ_Entry ls_iq_entry);
+int add_issue_queue_entry(APEX_IQ* issue_queue, LS_IQ_Entry ls_iq_entry, int* lsq_index);
+
 int update_issue_queue_entry(APEX_IQ* issue_queue, LS_IQ_Entry ls_iq_entry);
 int get_issue_queue_index_to_issue(APEX_IQ* issue_queue, int* issue_index);
 
@@ -91,7 +92,7 @@ APEX_LSQ* init_ls_queue();
 void deinit_ls_queue(APEX_LSQ* ls_queue);
 
 int can_add_entry_in_ls_queue(APEX_LSQ* ls_queue);
-int add_ls_queue_entry(APEX_LSQ* ls_queue, LS_IQ_Entry ls_iq_entry);
+int add_ls_queue_entry(APEX_LSQ* ls_queue, LS_IQ_Entry ls_iq_entry, int* add_position);
 
 void print_ls_iq_content(APEX_LSQ* ls_queue, APEX_IQ* issue_queue);
 

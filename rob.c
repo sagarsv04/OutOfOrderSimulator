@@ -167,24 +167,134 @@ int commit_reorder_buffer_entry(APEX_ROB* rob, int* cpu_reg, int* cpu_reg_valid)
 }
 
 
-void print_rob_rename_content(APEX_ROB* rob, APEX_RENAME* rename_table) {
+int can_rename_reg_tag(APEX_RENAME* rename_table) {
+
+	int rename_position = -1;
+
+	for (int i=0; i<RENAME_TABLE_SIZE; i++) {
+		if (rename_table->reg_rename[i].tag_valid==INVALID) {
+			rename_position = i;
+			break;
+		}
+	}
+	if (rename_position<0) {
+		return FAILURE;
+	}
+	else {
+		return SUCCESS;
+	}
+}
+
+
+int check_if_reg_renamed(int any_reg, APEX_RENAME* rename_table) {
+
+	// check in reverse order
+	int rename_position = -1;
+
+	for (int i=RENAME_TABLE_SIZE-1; i>=0; i--) {
+		if (rename_table->reg_rename[i].tag_valid==INVALID) {
+			if (rename_table->reg_rename[i].rename_tag == any_reg) {
+				rename_position = i;
+				break;
+			}
+		}
+	}
+	if (rename_position<0) {
+		return FAILURE;
+	}
+	else {
+		return SUCCESS;
+	}
+}
+
+
+int get_reg_renamed_tag(int* src_reg, APEX_RENAME* rename_table) {
+
+	// check in reverse order
+	int rename_position = -1;
+
+	for (int i=RENAME_TABLE_SIZE-1; i>=0; i--) {
+		if (rename_table->reg_rename[i].tag_valid==INVALID) {
+			if (rename_table->reg_rename[i].rename_tag == *src_reg) {
+				rename_position = i;
+				break;
+			}
+		}
+	}
+	if (rename_position<0) {
+		return FAILURE;
+	}
+	else {
+		*src_reg = rename_table->reg_rename[rename_position].rename_tag;
+	}
+	return SUCCESS;
+}
+
+int rename_desc_reg(int* desc_reg, APEX_RENAME* rename_table) {
+
+	int rename_position = -1;
+
+	for (int i=0; i<RENAME_TABLE_SIZE; i++) {
+		if (rename_table->reg_rename[i].tag_valid==INVALID) {
+			rename_position = i;
+			break;
+		}
+	}
+	if (rename_position<0) {
+		return FAILURE;
+	}
+	else {
+		rename_table->reg_rename[rename_position].rename_tag = *desc_reg;
+		*desc_reg = rename_position;
+		rename_table->reg_rename[rename_position].tag_valid = VALID;
+	}
+
+	return SUCCESS;
+}
+
+
+void print_rob_and_rename_content(APEX_ROB* rob, APEX_RENAME* rename_table) {
 
 	if (ENABLE_REG_MEM_STATUS_PRINT) {
 		char* inst_type_str = (char*) malloc(10);
 		printf("\n============ STATE OF REORDER BUFFER ============\n");
 		printf("ROB Buffer Length: %d, Commit Pointer: %d, Issue Pointer: %d\n", rob->buffer_length, rob->commit_ptr, rob->issue_ptr);
-		printf("Index, Status, Type, OpCode, Rd-value, Exception, Valid\n");
+		printf("Index, "
+						"Status, "
+						"Type, "
+						"OpCode, "
+						"Rd-value, "
+						"Exception, "
+						"Valid\n");
 		for (int i=0;i<ROB_SIZE;i++) {
 			strcpy(inst_type_str, "");
 			get_inst_name(rob->rob_entry[i].inst_type, inst_type_str);
-			printf("%02d\t|\t%d\t|\t%d\t|\t%s\t|\tR%02d-%d\t|\t%d\t|\t%d\n",
-		 					i, rob->rob_entry[i].status, rob->rob_entry[i].inst_type, inst_type_str, rob->rob_entry[i].rd, rob->rob_entry[i].rd_value,
-							rob->rob_entry[i].exception, rob->rob_entry[i].valid);
+			printf("%02d\t|"
+							"\t%d\t|"
+							"\t%d\t|"
+							"\t%.5s\t|"
+							"\tR%02d-%d\t|"
+							"\t%d\t|"
+							"\t%d\n",
+		 					i,
+							rob->rob_entry[i].status,
+							rob->rob_entry[i].inst_type,
+							inst_type_str,
+							rob->rob_entry[i].rd, rob->rob_entry[i].rd_value,
+							rob->rob_entry[i].exception,
+							rob->rob_entry[i].valid);
 		}
 		printf("\n============ STATE OF RENAME ADDR TABLE ============\n");
-		printf("Index, Tag, Valid\n");
+		printf("Index, "
+						"Tag, "
+						"Valid\n");
 		for (int i=0;i<RENAME_TABLE_SIZE;i++) {
-			printf("%02d\t|\t%02d\t|\t%d\n", i, rename_table->arf_rename[i].rob_tag, rename_table->arf_rename[i].tag_valid);
+			printf("P%02d\t|"
+							"\tR%02d\t|"
+							"\t%d\n",
+							i,
+							rename_table->reg_rename[i].rename_tag,
+							rename_table->reg_rename[i].tag_valid);
 		}
 	free(inst_type_str);
 	}

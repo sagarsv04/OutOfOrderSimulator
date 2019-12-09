@@ -116,6 +116,7 @@ typedef struct CPU_Stage {
 	int executed;     // Flag to indicate, stage has executed or not
 	int empty;        // Flag to indicate, stage is empty
 	int stage_cycle;  // Keep count of cycle for individual stage // used to Mem stage
+	int lsq_index;		// to address lSQ entry in issue queue
 } CPU_Stage;
 
 /* Model of APEX CPU */
@@ -123,10 +124,8 @@ typedef struct APEX_CPU {
 
 	int clock;		// clock cycles elasped
 	int pc;		// current program counter
-	int regs[REGISTER_FILE_SIZE];		// integer register file
-	int regs_invalid[REGISTER_FILE_SIZE];		// integer register valid file
-	int phy_regs[REGISTER_FILE_SIZE];		// integer register file
-	int phy_regs_invalid[REGISTER_FILE_SIZE];		// integer register valid file
+	int regs[REGISTER_FILE_SIZE];		// integer register file (ARF)
+	int regs_invalid[REGISTER_FILE_SIZE];		// integer register valid file (ARF)
 	CPU_Stage stage[NUM_STAGES];		// array of CPU_Stage struct. Note: use . in struct with variable names, use -> when its a pointer
 	APEX_Instruction* code_memory;		// struct pointer where instructions are stored
 	int flags[NUM_FLAG];
@@ -139,8 +138,6 @@ typedef struct APEX_CPU {
 APEX_Instruction* create_code_memory(const char* filename, int* size);
 
 APEX_CPU* APEX_cpu_init(const char* filename);
-
-int previous_arithmetic_check(APEX_CPU* cpu, int func_unit);
 
 int simulate(APEX_CPU* cpu, int num_cycle);
 
@@ -174,7 +171,7 @@ int writeback_stage(APEX_CPU* cpu);
 
 int fetch(APEX_CPU* cpu);
 
-int decode(APEX_CPU* cpu);
+int decode(APEX_CPU* cpu, APEX_RENAME* rename_table);
 
 int dispatch_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APEX_ROB* rob, APEX_RENAME* rename_table);
 

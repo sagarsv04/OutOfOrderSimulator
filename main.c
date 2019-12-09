@@ -51,7 +51,7 @@ int main(int argc, char const* argv[]) {
           // show everything
           print_cpu_content(cpu);
           print_ls_iq_content(ls_queue, issue_queue);
-          print_rob_rename_content(rob, rename_table);
+          print_rob_and_rename_content(rob, rename_table);
         }
       }
       else {
@@ -89,7 +89,7 @@ int main(int argc, char const* argv[]) {
             // show everything
             print_cpu_content(cpu);
             print_ls_iq_content(ls_queue, issue_queue);
-            print_rob_rename_content(rob, rename_table);
+            print_rob_and_rename_content(rob, rename_table);
           }
         }
         else {

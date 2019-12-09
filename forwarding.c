@@ -133,6 +133,79 @@ void push_func_unit_stages(APEX_CPU* cpu){
 }
 
 
+int get_reg_values(APEX_CPU* cpu, CPU_Stage* stage, int src_reg_pos, int src_reg) {
+	// Get Reg values function
+	int value = 0;
+	if (src_reg_pos == 0) {
+		value = cpu->regs[src_reg];
+	}
+	else if (src_reg_pos == 1) {
+		value = cpu->regs[src_reg];
+	}
+	else if (src_reg_pos == 2) {
+		value = cpu->regs[src_reg];
+	}
+	else {
+		;// Nothing
+	}
+	return value;
+}
+
+
+int get_reg_status(APEX_CPU* cpu, int reg_number) {
+	// Get Reg Status function
+	int status = 1; // 1 is invalid
+	if (reg_number > REGISTER_FILE_SIZE) {
+		// Segmentation fault
+		fprintf(stderr, "Segmentation fault for Register location :: %d\n", reg_number);
+	}
+	else {
+		status = cpu->regs_invalid[reg_number];
+	}
+	return status;
+}
+
+
+void set_reg_status(APEX_CPU* cpu, int reg_number, int status) {
+	// Set Reg Status function
+	// NOTE: insted of set inc or dec regs_invalid
+	if (reg_number > REGISTER_FILE_SIZE) {
+		// Segmentation fault
+		fprintf(stderr, "Segmentation fault for Register location :: %d\n", reg_number);
+	}
+	else {
+		cpu->regs_invalid[reg_number] = cpu->regs_invalid[reg_number] + status;
+	}
+}
+
+
+int previous_arithmetic_check(APEX_CPU* cpu, int func_unit) {
+
+	int status = 0;
+	int a = 0;
+	for (int i=a;i<func_unit; i++) {
+		if (strcmp(cpu->stage[i].opcode, "NOP") != 0) {
+			a = i;
+			break;
+		}
+	}
+
+	if (a!=0){
+		if ((strcmp(cpu->stage[a].opcode, "ADD") == 0) ||
+			(strcmp(cpu->stage[a].opcode, "ADDL") == 0) ||
+			(strcmp(cpu->stage[a].opcode, "SUB") == 0) ||
+			(strcmp(cpu->stage[a].opcode, "SUBL") == 0) ||
+			(strcmp(cpu->stage[a].opcode, "MUL") == 0) || (strcmp(cpu->stage[a].opcode, "DIV") == 0)) {
+
+			status = 1;
+		}
+	}
+
+	return status;
+}
+
+
+
 APEX_Forward get_cpu_forwarding_status(APEX_CPU* cpu, CPU_Stage* stage) {
 	// depending on instruction check if forwarding can happen
 	APEX_Forward forwarding;

@@ -29,14 +29,18 @@ typedef struct APEX_ROB_ENTRY {
 
 
 typedef struct APEX_ARF_TABLE {
-	int tag_valid;				// tells if rename table points to valid rob entry
+	// array index is used to tell if its P0 or Pn
+	// this tells us from which rob entry we will get our Pn Value
+	int tag_valid;				// tells if rob tag is valid or not
 	int rob_tag;					// holds the index of rob entry ie issue_ptr
 }APEX_ARF_TABLE;
 
 
 typedef struct APEX_RENAME_TABLE {
-	int tag_valid;				// tells if rename table points to valid rob entry
-	int rename_tag;					// holds the index of rob entry ie issue_ptr
+	// array index is used to tell if its P0 or Pn
+	// this tells us which Pn will holds our desc reg value
+	int tag_valid;					// tells if rename entry gor desc reg is valid
+	int rename_tag;					// holds the index of desc reg like R0 or Rn
 } APEX_RENAME_TABLE;
 
 
@@ -81,9 +85,15 @@ void deinit_rename_table(APEX_RENAME* rename_table);
 int can_add_entry_in_reorder_buffer(APEX_ROB* rob);
 int add_reorder_buffer_entry(APEX_ROB* rob, ROB_Entry rob_entry);
 
+int can_rename_reg_tag(APEX_RENAME* rename_table);
+int rename_desc_reg(int* desc_reg, APEX_RENAME* rename_table);
+
+int check_if_reg_renamed(int any_reg, APEX_RENAME* rename_table);
+int get_reg_renamed_tag(int* src_reg, APEX_RENAME* rename_table);
+
 int update_reorder_buffer_entry_data(APEX_ROB* rob, ROB_Entry rob_entry);
 int commit_reorder_buffer_entry(APEX_ROB* rob, int* cpu_reg, int* cpu_reg_valid);
 
-void print_rob_rename_content(APEX_ROB* rob, APEX_RENAME* rename_table);
+void print_rob_and_rename_content(APEX_ROB* rob, APEX_RENAME* rename_table);
 
  #endif

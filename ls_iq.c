@@ -64,7 +64,7 @@ int can_add_entry_in_issue_queue(APEX_IQ* issue_queue) {
 	}
 }
 
-int add_issue_queue_entry(APEX_IQ* issue_queue, LS_IQ_Entry ls_iq_entry) {
+int add_issue_queue_entry(APEX_IQ* issue_queue, LS_IQ_Entry ls_iq_entry, int* lsq_index) {
 	// if instruction sucessfully added then only pass the instruction to function units
 	int add_position = -1;
 	if (!ls_iq_entry.executed) {
@@ -93,6 +93,7 @@ int add_issue_queue_entry(APEX_IQ* issue_queue, LS_IQ_Entry ls_iq_entry) {
 			issue_queue->iq_entries[add_position].rs2_ready = ls_iq_entry.rs2_valid;
 			issue_queue->iq_entries[add_position].literal = ls_iq_entry.buffer;
 			issue_queue->iq_entries[add_position].stage_cycle = INVALID;
+			issue_queue->iq_entries[add_position].lsq_index = *lsq_index;
 		}
 	}
 	return SUCCESS;
@@ -231,7 +232,7 @@ int can_add_entry_in_ls_queue(APEX_LSQ* ls_queue) {
 }
 
 
-int add_ls_queue_entry(APEX_LSQ* ls_queue, LS_IQ_Entry ls_iq_entry) {
+int add_ls_queue_entry(APEX_LSQ* ls_queue, LS_IQ_Entry ls_iq_entry, int* lsq_index) {
 	// if instruction sucessfully added then only pass the instruction to function units
 	int add_position = -1;
 
@@ -245,6 +246,7 @@ int add_ls_queue_entry(APEX_LSQ* ls_queue, LS_IQ_Entry ls_iq_entry) {
 		return FAILURE;
 	}
 	else {
+		*lsq_index = add_position;
 		ls_queue->lsq_entries[add_position].status = VALID;
 		ls_queue->lsq_entries[add_position].load_store = ls_iq_entry.inst_type;
 		ls_queue->lsq_entries[add_position].rd = ls_iq_entry.rd;
@@ -267,30 +269,72 @@ void print_ls_iq_content(APEX_LSQ* ls_queue, APEX_IQ* issue_queue) {
 	if (ENABLE_REG_MEM_STATUS_PRINT) {
 		char* inst_type_str = (char*) malloc(10);
 		printf("\n============ STATE OF ISSUE QUEUE ============\n");
-		printf("Index, Status, Type, OpCode, Rd-value, Rs1-value-ready, Rs2-value-ready, LSQ Index\n");
+		printf("Index, "
+						"Status, "
+						"Type, "
+						"OpCode, "
+						"Rd-value, "
+						"Rs1-value-ready, "
+						"Rs2-value-ready, "
+						"literal, "
+						"LSQ Index\n");
 		for (int i=0;i<IQ_SIZE;i++) {
 			strcpy(inst_type_str, "");
 			get_inst_name(issue_queue->iq_entries[i].inst_type, inst_type_str);
-			printf("%02d\t|\t%d\t|\t%d\t|\t%s\t|\tR%02d-%d\t|\tR%02d-%d-%d\t|\tR%02d-%d-%d\t|\t%02d\n",
-							i, issue_queue->iq_entries[i].status, issue_queue->iq_entries[i].inst_type, inst_type_str, issue_queue->iq_entries[i].rd, issue_queue->iq_entries[i].rd_value,
+			printf("%02d\t|"
+							"\t%d\t|"
+							"\t%d\t|"
+							"\t%.5s\t|"
+							"\tR%02d-%d\t|"
+							"\tR%02d-%d-%d\t|"
+							"\tR%02d-%d-%d\t|"
+							"\t#%02d\t|"
+							"\t%02d\n",
+							i,
+							issue_queue->iq_entries[i].status,
+							issue_queue->iq_entries[i].inst_type,
+							inst_type_str,
+							issue_queue->iq_entries[i].rd, issue_queue->iq_entries[i].rd_value,
 							issue_queue->iq_entries[i].rs1, issue_queue->iq_entries[i].rs1_value, issue_queue->iq_entries[i].rs1_ready,
-							issue_queue->iq_entries[i].rs2, issue_queue->iq_entries[i].rs2_value, issue_queue->iq_entries[i].rs2_ready, issue_queue->iq_entries[i].lsq_index);
+							issue_queue->iq_entries[i].rs2, issue_queue->iq_entries[i].rs2_value, issue_queue->iq_entries[i].rs2_ready,
+							issue_queue->iq_entries[i].literal,
+							issue_queue->iq_entries[i].lsq_index);
 		}
 		printf("\n============ STATE OF LOAD STORE QUEUE ============\n");
-		printf("Index, Status, Type, OpCode, Mem Valid, Data Ready, Rd-value, Rs1-value, Rs2-value\n");
+		printf("Index, "
+						"Status, "
+						"Type, "
+						"OpCode, "
+						"Mem Valid, "
+						"Data Ready, "
+						"Rd-value, "
+						"Rs1-value, "
+						"Rs2-value, "
+						"literal\n");
 		for (int i=0;i<LSQ_SIZE;i++) {
 			strcpy(inst_type_str, "");
 			get_inst_name(ls_queue->lsq_entries[i].load_store, inst_type_str);
-			if ((ls_queue->lsq_entries[i].load_store==STR) || (ls_queue->lsq_entries[i].load_store==LDR)) {
-				printf("%02d\t|\t%d\t|\t%d\t|\t%s\t|\t%d\t|\t%d\t|\tR%02d-%d\t|\tR%02d-%d\t|\tR%02d-%d\n",
-		 						i, ls_queue->lsq_entries[i].status, ls_queue->lsq_entries[i].load_store, inst_type_str, ls_queue->lsq_entries[i].mem_valid, ls_queue->lsq_entries[i].data_ready,
-								ls_queue->lsq_entries[i].rd, ls_queue->lsq_entries[i].rd_value, ls_queue->lsq_entries[i].rs1, ls_queue->lsq_entries[i].rs1_value, ls_queue->lsq_entries[i].rs2, ls_queue->lsq_entries[i].rs2_value);
-			}
-			else {
-				printf("%02d\t|\t%d\t|\t%d\t|\t%s\t|\t%d\t|\t%d\t|\tR%02d-%d\t|\tR%02d-%d\t|\t#%02d\n",
-		 						i, ls_queue->lsq_entries[i].status, ls_queue->lsq_entries[i].load_store, inst_type_str, ls_queue->lsq_entries[i].mem_valid, ls_queue->lsq_entries[i].data_ready,
-								ls_queue->lsq_entries[i].rd, ls_queue->lsq_entries[i].rd_value, ls_queue->lsq_entries[i].rs1, ls_queue->lsq_entries[i].rs1_value, ls_queue->lsq_entries[i].literal);
-			}
+			printf("%02d\t|"
+							"\t%d\t|"
+							"\t%d\t|"
+							"\t%.5s\t|"
+							"\t%d\t|"
+							"\t%d\t|"
+							"\tR%02d-%d\t|"
+							"\tR%02d-%d\t|"
+							"\tR%02d-%d\t|"
+							"\t#%02d\n",
+	 						i,
+							ls_queue->lsq_entries[i].status,
+							ls_queue->lsq_entries[i].load_store,
+							inst_type_str,
+							ls_queue->lsq_entries[i].mem_valid,
+							ls_queue->lsq_entries[i].data_ready,
+							ls_queue->lsq_entries[i].rd, ls_queue->lsq_entries[i].rd_value,
+							ls_queue->lsq_entries[i].rs1, ls_queue->lsq_entries[i].rs1_value,
+							ls_queue->lsq_entries[i].rs2, ls_queue->lsq_entries[i].rs2_value,
+							ls_queue->lsq_entries[i].literal);
+
 		}
 		free(inst_type_str);
 	}

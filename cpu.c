@@ -161,75 +161,6 @@ void print_cpu_content(APEX_CPU* cpu) {
 	}
 }
 
-static int get_reg_values(APEX_CPU* cpu, CPU_Stage* stage, int src_reg_pos, int src_reg) {
-	// Get Reg values function
-	int value = 0;
-	if (src_reg_pos == 0) {
-		value = cpu->regs[src_reg];
-	}
-	else if (src_reg_pos == 1) {
-		value = cpu->regs[src_reg];
-	}
-	else if (src_reg_pos == 2) {
-		value = cpu->regs[src_reg];
-	}
-	else {
-		;// Nothing
-	}
-	return value;
-}
-
-static int get_reg_status(APEX_CPU* cpu, int reg_number) {
-	// Get Reg Status function
-	int status = 1; // 1 is invalid
-	if (reg_number > REGISTER_FILE_SIZE) {
-		// Segmentation fault
-		fprintf(stderr, "Segmentation fault for Register location :: %d\n", reg_number);
-	}
-	else {
-		status = cpu->regs_invalid[reg_number];
-	}
-	return status;
-}
-
-static void set_reg_status(APEX_CPU* cpu, int reg_number, int status) {
-	// Set Reg Status function
-	// NOTE: insted of set inc or dec regs_invalid
-	if (reg_number > REGISTER_FILE_SIZE) {
-		// Segmentation fault
-		fprintf(stderr, "Segmentation fault for Register location :: %d\n", reg_number);
-	}
-	else {
-		cpu->regs_invalid[reg_number] = cpu->regs_invalid[reg_number] + status;
-	}
-}
-
-
-int previous_arithmetic_check(APEX_CPU* cpu, int func_unit) {
-
-	int status = 0;
-	int a = 0;
-	for (int i=a;i<func_unit; i++) {
-		if (strcmp(cpu->stage[i].opcode, "NOP") != 0) {
-			a = i;
-			break;
-		}
-	}
-
-	if (a!=0){
-		if ((strcmp(cpu->stage[a].opcode, "ADD") == 0) ||
-			(strcmp(cpu->stage[a].opcode, "ADDL") == 0) ||
-			(strcmp(cpu->stage[a].opcode, "SUB") == 0) ||
-			(strcmp(cpu->stage[a].opcode, "SUBL") == 0) ||
-			(strcmp(cpu->stage[a].opcode, "MUL") == 0) || (strcmp(cpu->stage[a].opcode, "DIV") == 0)) {
-
-			status = 1;
-		}
-	}
-
-	return status;
-}
-
 
 /*
  * ########################################## Fetch Stage ##########################################
@@ -300,10 +231,11 @@ int fetch(APEX_CPU* cpu) {
  * ########################################## Decode Stage ##########################################
 */
 
-int decode(APEX_CPU* cpu) {
+int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 
 	CPU_Stage* stage = &cpu->stage[DRF];
 	stage->executed = 0;
+	int ret = -1;
 	// decode stage only has power to stall itself and Fetch stage
 	APEX_Forward forwarding = get_cpu_forwarding_status(cpu, stage);
 	if ((!stage->stalled)||(forwarding.unstall)) {
@@ -311,463 +243,380 @@ int decode(APEX_CPU* cpu) {
 		switch(stage->inst_type) {
 
 			case STORE:  // ************************************* STORE ************************************* //
-				if (!get_reg_status(cpu, stage->rd) && !get_reg_status(cpu, stage->rs1)) {
-					// read literal and register values
-					stage->rd_value = get_reg_values(cpu, stage, 0, stage->rd);
-					stage->rd_valid = 1;
-					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
-					stage->rs1_valid = 1;
-					stage->buffer = stage->imm; // keeping literal value in buffer to calculate mem add in exe stage
+
+				stage->buffer = stage->imm; // keeping literal value in buffer to calculate mem add in exe stage
+				// check if src regs are renamed
+				if (check_if_reg_renamed(stage->rs1, rename_table)==SUCCESS) {
+					// get the src reg renamed tag
+					ret = get_reg_renamed_tag(&(stage->rs1), rename_table);
+					if (ret!=SUCCESS) {
+						printf("Failed to get renamed tag for R%d\n", stage->rs1);
+					}
 				}
-				else if (forwarding.status) {
-					// take the value
-					stage->rd_value = cpu->stage[forwarding.rd_from].rd_value;
-					stage->rd_valid = 1;
-					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
-					stage->rs1_valid = 1;
-					stage->buffer = stage->imm; // keeping literal value in buffer to calculate mem add in exe stage
-				}
-				else if ((forwarding.rs1_from>=0) && !get_reg_status(cpu, stage->rd)) {
-					// take the value
-					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
-					stage->rs1_valid = 1;
-					stage->rd_value = get_reg_values(cpu, stage, 0, stage->rd);
-					stage->rd_valid = 1;
-					stage->buffer = stage->imm; // keeping literal value in buffer to calculate mem add in exe stage
-				}
-				else if ((forwarding.rd_from>=0) && !get_reg_status(cpu, stage->rs1)) {
-					// take the value
-					stage->rd_value = cpu->stage[forwarding.rd_from].rd_value;
-					stage->rd_valid = 1;
-					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
-					stage->rs1_valid = 1;
-					stage->buffer = stage->imm; // keeping literal value in buffer to calculate mem add in exe stage
-				}
-				else {
-				// invalid the regs values
-				stage->rd_valid = 0;
-				stage->rs1_valid = 0;
+				// check if desc regs are renamed
+				if (check_if_reg_renamed(stage->rd, rename_table)==SUCCESS) {
+					// get the desc reg renamed tag
+					ret = get_reg_renamed_tag(&(stage->rd), rename_table);
+					if (ret!=SUCCESS) {
+						printf("Failed to get renamed tag for R%d\n", stage->rd);
+					}
 				}
 				break;
 
 			case STR:  // ************************************* STR ************************************* //
 				// read only values of last two registers
-				if (!get_reg_status(cpu, stage->rd) && !get_reg_status(cpu, stage->rs1) && !get_reg_status(cpu, stage->rs2)) {
-					stage->rd_value = get_reg_values(cpu, stage, 0, stage->rd);
-					stage->rd_valid = 1;
-					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1); // Here rd becomes src1 and src2, src3 are rs1, rs2
-					stage->rs1_valid = 1;
-					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
-					stage->rs2_valid = 1;
+				// check if src regs are renamed
+				if (check_if_reg_renamed(stage->rs1, rename_table)==SUCCESS) {
+					// get the src reg renamed tag
+					ret = get_reg_renamed_tag(&(stage->rs1), rename_table);
+					if (ret!=SUCCESS) {
+						printf("Failed to get renamed tag for R%d\n", stage->rs1);
+					}
 				}
-				else if (forwarding.status) {
-					// take the value
-					stage->rd_value = cpu->stage[forwarding.rd_from].rd_value;
-					stage->rd_valid = 1;
-					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
-					stage->rs1_valid = 1;
-					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					stage->rs2_valid = 1;
+				// check if src regs are renamed
+				if (check_if_reg_renamed(stage->rs2, rename_table)==SUCCESS) {
+					// get the src reg renamed tag
+					ret = get_reg_renamed_tag(&(stage->rs2), rename_table);
+					if (ret!=SUCCESS) {
+						printf("Failed to get renamed tag for R%d\n", stage->rs2);
+					}
 				}
-				else if ((forwarding.rd_from>=0) && !get_reg_status(cpu, stage->rs1) && !get_reg_status(cpu, stage->rs2)) {
-					// take the value
-					stage->rd_value = cpu->stage[forwarding.rd_from].rd_value;
-					stage->rd_valid = 1;
-					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
-					stage->rs1_valid = 1;
-					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
-					stage->rs2_valid = 1;
-				}
-				else if ((forwarding.rs1_from>=0) && !get_reg_status(cpu, stage->rd) && !get_reg_status(cpu, stage->rs2)) {
-					// take the value
-					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
-					stage->rs1_valid = 1;
-					stage->rd_value = get_reg_values(cpu, stage, 0, stage->rd);
-					stage->rd_valid = 1;
-					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
-					stage->rs2_valid = 1;
-				}
-				else if ((forwarding.rs2_from>=0) && !get_reg_status(cpu, stage->rd) && !get_reg_status(cpu, stage->rs1)) {
-					// take the value
-					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					stage->rs2_valid = 1;
-					stage->rd_value = get_reg_values(cpu, stage, 0, stage->rd);
-					stage->rd_valid = 1;
-					stage->rs1_value = get_reg_values(cpu, stage, 2, stage->rs1);
-					stage->rs1_valid = 1;
-				}
-				else {
-					// invalid the regs values
-					stage->rd_valid = 0;
-					stage->rs1_valid = 0;
-					stage->rs2_valid = 0;
+				// check if desc regs are renamed
+				if (check_if_reg_renamed(stage->rd, rename_table)==SUCCESS) {
+					// get the desc reg renamed tag
+					ret = get_reg_renamed_tag(&(stage->rd), rename_table);
+					if (ret!=SUCCESS) {
+						printf("Failed to get renamed tag for R%d\n", stage->rd);
+					}
 				}
 				break;
 
 			case LOAD:  // ************************************* LOAD ************************************* //
 				// read literal and register values
-				if (!get_reg_status(cpu, stage->rs1)) {
-					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
-					stage->rs1_valid = 1;
-					stage->buffer = stage->imm; // keeping literal value in buffer to calculate mem add in exe stage
+				stage->buffer = stage->imm; // keeping literal value in buffer to calculate mem add in exe stage
+				// check if src regs are renamed
+				if (check_if_reg_renamed(stage->rs1, rename_table)==SUCCESS) {
+					// get the src reg renamed tag
+					ret = get_reg_renamed_tag(&(stage->rs1), rename_table);
+					if (ret!=SUCCESS) {
+						printf("Failed to get renamed tag for R%d\n", stage->rs1);
+					}
 				}
-				else if (forwarding.status) {
-					// take the value
-					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
-					stage->rs1_valid = 1;
-					stage->buffer = stage->imm; // keeping literal value in buffer to calculate mem add in exe stage
+				// check if renaming can be done
+				if (can_rename_reg_tag(rename_table)==SUCCESS) {
+					// change the desc regs tag
+					ret = rename_desc_reg(&(stage->rd), rename_table);
+					if (ret!=SUCCESS) {
+						printf("Failed to get renamed tag for R%d\n", stage->rd);
+					}
 				}
 				else {
-					// invalid the regs values
-					stage->rs1_valid = 0;
+					printf("Can't rename reg");
 				}
 				break;
 
 			case LDR:  // ************************************* LDR ************************************* //
 				// read only values of last two registers
-				if (!get_reg_status(cpu, stage->rs1) && !get_reg_status(cpu, stage->rs2)) {
-					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
-					stage->rs1_valid = 1;
-					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
-					stage->rs2_valid = 1;
+				// check if src regs are renamed
+				if (check_if_reg_renamed(stage->rs1, rename_table)==SUCCESS) {
+					// get the src reg renamed tag
+					ret = get_reg_renamed_tag(&(stage->rs1), rename_table);
+					if (ret!=SUCCESS) {
+						printf("Failed to get renamed tag for R%d\n", stage->rs1);
+					}
 				}
-				else if (forwarding.status) {
-					// take the value
-					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
-					stage->rs1_valid = 1;
-					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					stage->rs2_valid = 1;
+				// check if src regs are renamed
+				if (check_if_reg_renamed(stage->rs2, rename_table)==SUCCESS) {
+					// get the src reg renamed tag
+					ret = get_reg_renamed_tag(&(stage->rs2), rename_table);
+					if (ret!=SUCCESS) {
+						printf("Failed to get renamed tag for R%d\n", stage->rs2);
+					}
 				}
-				else if ((forwarding.rs2_from>=0) && !get_reg_status(cpu, stage->rs1)) {
-					// take the value
-					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
-					stage->rs1_valid = 1;
-					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					stage->rs2_valid = 1;
-				}
-				else if ((forwarding.rs1_from>=0) && !get_reg_status(cpu, stage->rs2)) {
-					// take the value
-					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
-					stage->rs1_valid = 1;
-					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
-					stage->rs2_valid = 1;
+				// check if renaming can be done
+				if (can_rename_reg_tag(rename_table)==SUCCESS) {
+					// change the desc regs tag
+					ret = rename_desc_reg(&(stage->rd), rename_table);
+					if (ret!=SUCCESS) {
+						printf("Failed to get renamed tag for R%d\n", stage->rd);
+					}
 				}
 				else {
-					// invalid the regs values
-					stage->rs1_valid = 0;
-					stage->rs2_valid = 0;
+					printf("Can't rename reg");
 				}
 				break;
 
 			case MOVC:  // ************************************* MOVC ************************************* //
 				// read literal values
 				stage->buffer = stage->imm; // keeping literal value in buffer to load in mem stage
+				// check if renaming can be done
+				if (can_rename_reg_tag(rename_table)==SUCCESS) {
+					// change the desc regs tag
+					ret = rename_desc_reg(&(stage->rd), rename_table);
+				}
+				else {
+					printf("Failed to rename tag for R%d\n", stage->rd);
+				}
 				break;
 
 			case MOV:  // ************************************* MOV ************************************* //
 				// read register values
-				if (!get_reg_status(cpu, stage->rs1)) {
-					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
-					stage->rs1_valid = 1;
+				// check if src regs are renamed
+				if (check_if_reg_renamed(stage->rs1, rename_table)==SUCCESS) {
+					// get the src reg renamed tag
+					ret = get_reg_renamed_tag(&(stage->rs1), rename_table);
+					if (ret!=SUCCESS) {
+						printf("Failed to get renamed tag for R%d\n", stage->rs1);
+					}
 				}
-				else if (forwarding.status) {
-					// take the value
-					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
-					stage->rs1_valid = 1;
+				// check if renaming can be done
+				if (can_rename_reg_tag(rename_table)==SUCCESS) {
+					// change the desc regs tag
+					ret = rename_desc_reg(&(stage->rd), rename_table);
 				}
 				else {
-					// invalid the regs values
-					stage->rs1_valid = 0;
+					printf("Failed to rename tag for R%d\n", stage->rd);
 				}
 				break;
 
 			case ADD:  // ************************************* ADD ************************************* //
 				// read only values of last two registers
-				if (!get_reg_status(cpu, stage->rs1) && !get_reg_status(cpu, stage->rs2)) {
-					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
-					stage->rs1_valid = 1;
-					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
-					stage->rs2_valid = 1;
+				// check if src regs are renamed
+				if (check_if_reg_renamed(stage->rs1, rename_table)==SUCCESS) {
+					// get the src reg renamed tag
+					ret = get_reg_renamed_tag(&(stage->rs1), rename_table);
+					if (ret!=SUCCESS) {
+						printf("Failed to get renamed tag for R%d\n", stage->rs1);
+					}
 				}
-				else if (forwarding.status) {
-					// take the value
-					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
-					stage->rs1_valid = 1;
-					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					stage->rs2_valid = 1;
+				// check if src regs are renamed
+				if (check_if_reg_renamed(stage->rs2, rename_table)==SUCCESS) {
+					// get the src reg renamed tag
+					ret = get_reg_renamed_tag(&(stage->rs2), rename_table);
+					if (ret!=SUCCESS) {
+						printf("Failed to get renamed tag for R%d\n", stage->rs2);
+					}
 				}
-				else if ((forwarding.rs2_from>=0) && !get_reg_status(cpu, stage->rs1)) {
-					// take the value
-					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
-					stage->rs1_valid = 1;
-					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					stage->rs2_valid = 1;
+				// check if renaming can be done
+				if (can_rename_reg_tag(rename_table)==SUCCESS) {
+					// change the desc regs tag
+					ret = rename_desc_reg(&(stage->rd), rename_table);
 				}
-				else if ((forwarding.rs1_from>=0) && !get_reg_status(cpu, stage->rs2)) {
-					// take the value
-					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
-					stage->rs1_valid = 1;
-					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
-					stage->rs2_valid = 1;
-				}
-				 else {
- 					// invalid the regs values
- 					stage->rs1_valid = 0;
- 					stage->rs2_valid = 0;
+				else {
+					printf("Failed to rename tag for R%d\n", stage->rd);
 				}
 				break;
 
 			case ADDL:  // ************************************* ADDL ************************************* //
 				// read only values of last two registers
-				if (!get_reg_status(cpu, stage->rs1)) {
-					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
-					stage->rs1_valid = 1;
-					stage->buffer = stage->imm; // keeping literal value in buffer to add in exe stage
+				stage->buffer = stage->imm; // keeping literal value in buffer to add in exe stage
+				// check if src regs are renamed
+				if (check_if_reg_renamed(stage->rs1, rename_table)==SUCCESS) {
+					// get the src reg renamed tag
+					ret = get_reg_renamed_tag(&(stage->rs1), rename_table);
+					if (ret!=SUCCESS) {
+						printf("Failed to get renamed tag for R%d\n", stage->rs1);
+					}
 				}
-				else if (forwarding.status) {
-					// take the value
-					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
-					stage->rs1_valid = 1;
-					stage->buffer = stage->imm; // keeping literal value in buffer to calculate mem add in exe stage
+				// check if renaming can be done
+				if (can_rename_reg_tag(rename_table)==SUCCESS) {
+					// change the desc regs tag
+					ret = rename_desc_reg(&(stage->rd), rename_table);
+					if (ret!=SUCCESS) {
+						printf("Failed to get renamed tag for R%d\n", stage->rd);
+					}
 				}
 				else {
-					// invalid the regs values
-					stage->rs1_valid = 0;
+					printf("Failed to rename tag for R%d\n", stage->rd);
 				}
 				break;
 
 			case SUB:   // ************************************* SUB ************************************* //
 				// read only values of last two registers
-				if (!get_reg_status(cpu, stage->rs1) && !get_reg_status(cpu, stage->rs2)) {
-					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
-					stage->rs1_valid = 1;
-					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
-					stage->rs2_valid = 1;
+				// check if src regs are renamed
+				if (check_if_reg_renamed(stage->rs1, rename_table)==SUCCESS) {
+					// get the src reg renamed tag
+					ret = get_reg_renamed_tag(&(stage->rs1), rename_table);
+					if (ret!=SUCCESS) {
+						printf("Failed to get renamed tag for R%d\n", stage->rs1);
+					}
 				}
-				else if (forwarding.status) {
-					// take the value
-					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
-					stage->rs1_valid = 1;
-					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					stage->rs2_valid = 1;
+				// check if src regs are renamed
+				if (check_if_reg_renamed(stage->rs2, rename_table)==SUCCESS) {
+					// get the src reg renamed tag
+					ret = get_reg_renamed_tag(&(stage->rs2), rename_table);
+					if (ret!=SUCCESS) {
+						printf("Failed to get renamed tag for R%d\n", stage->rs2);
+					}
 				}
-				else if ((forwarding.rs2_from>=0) && !get_reg_status(cpu, stage->rs1)) {
-					// take the value
-					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
-					stage->rs1_valid = 1;
-					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					stage->rs2_valid = 1;
-				}
-				else if ((forwarding.rs1_from>=0) && !get_reg_status(cpu, stage->rs2)) {
-					// take the value
-					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
-					stage->rs1_valid = 1;
-					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
-					stage->rs2_valid = 1;
+				// check if renaming can be done
+				if (can_rename_reg_tag(rename_table)==SUCCESS) {
+					// change the desc regs tag
+					ret = rename_desc_reg(&(stage->rd), rename_table);
 				}
 				else {
-					// invalid the regs values
-					stage->rs1_valid = 0;
-					stage->rs2_valid = 0;
+					printf("Failed to rename tag for R%d\n", stage->rd);
 				}
 				break;
 
 			case SUBL:  // ************************************* SUBL ************************************* //
 				// read only values of last two registers
-				if (!get_reg_status(cpu, stage->rs1)) {
-					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
-					stage->rs1_valid = 1;
-					stage->buffer = stage->imm; // keeping literal value in buffer to sub in exe stage
+				stage->buffer = stage->imm; // keeping literal value in buffer to add in exe stage
+				// check if src regs are renamed
+				if (check_if_reg_renamed(stage->rs1, rename_table)==SUCCESS) {
+					// get the src reg renamed tag
+					ret = get_reg_renamed_tag(&(stage->rs1), rename_table);
+					if (ret!=SUCCESS) {
+						printf("Failed to get renamed tag for R%d\n", stage->rs1);
+					}
 				}
-				else if (forwarding.status) {
-					// take the value
-					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
-					stage->rs1_valid = 1;
-					stage->buffer = stage->imm; // keeping literal value in buffer to calculate mem add in exe stage
+				// check if renaming can be done
+				if (can_rename_reg_tag(rename_table)==SUCCESS) {
+					// change the desc regs tag
+					ret = rename_desc_reg(&(stage->rd), rename_table);
 				}
 				else {
-					// invalid the regs values
-					stage->rs1_valid = 0;
+					printf("Failed to rename tag for R%d\n", stage->rd);
 				}
 				break;
 
 			case MUL:  // ************************************* MUL ************************************* //
 				// read only values of last two registers
-				if (!get_reg_status(cpu, stage->rs1) && !get_reg_status(cpu, stage->rs2)) {
-					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
-					stage->rs1_valid = 1;
-					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
-					stage->rs2_valid = 1;
+				// check if src regs are renamed
+				if (check_if_reg_renamed(stage->rs1, rename_table)==SUCCESS) {
+					// get the src reg renamed tag
+					ret = get_reg_renamed_tag(&(stage->rs1), rename_table);
+					if (ret!=SUCCESS) {
+						printf("Failed to get renamed tag for R%d\n", stage->rs1);
+					}
 				}
-				else if (forwarding.status) {
-					// take the value
-					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
-					stage->rs1_valid = 1;
-					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					stage->rs2_valid = 1;
+				// check if src regs are renamed
+				if (check_if_reg_renamed(stage->rs2, rename_table)==SUCCESS) {
+					// get the src reg renamed tag
+					ret = get_reg_renamed_tag(&(stage->rs2), rename_table);
+					if (ret!=SUCCESS) {
+						printf("Failed to get renamed tag for R%d\n", stage->rs2);
+					}
 				}
-				else if ((forwarding.rs2_from>=0) && !get_reg_status(cpu, stage->rs1)) {
-					// take the value
-					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
-					stage->rs1_valid = 1;
-					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					stage->rs2_valid = 1;
-				}
-				else if ((forwarding.rs1_from>=0) && !get_reg_status(cpu, stage->rs2)) {
-					// take the value
-					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
-					stage->rs1_valid = 1;
-					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
-					stage->rs2_valid = 1;
+				// check if renaming can be done
+				if (can_rename_reg_tag(rename_table)==SUCCESS) {
+					// change the desc regs tag
+					ret = rename_desc_reg(&(stage->rd), rename_table);
 				}
 				else {
-					// invalid the regs values
-					stage->rs1_valid = 0;
-					stage->rs2_valid = 0;
+					printf("Failed to rename tag for R%d\n", stage->rd);
 				}
 				break;
 
 			case DIV:  // ************************************* DIV ************************************* //
 				// read only values of last two registers
-				if (!get_reg_status(cpu, stage->rs1) && !get_reg_status(cpu, stage->rs2)) {
-					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
-					stage->rs1_valid = 1;
-					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
-					stage->rs2_valid = 1;
+				// check if src regs are renamed
+				if (check_if_reg_renamed(stage->rs1, rename_table)==SUCCESS) {
+					// get the src reg renamed tag
+					ret = get_reg_renamed_tag(&(stage->rs1), rename_table);
+					if (ret!=SUCCESS) {
+						printf("Failed to get renamed tag for R%d\n", stage->rs1);
+					}
 				}
-				else if (forwarding.status) {
-					// take the value
-					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
-					stage->rs1_valid = 1;
-					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					stage->rs2_valid = 1;
+				// check if src regs are renamed
+				if (check_if_reg_renamed(stage->rs2, rename_table)==SUCCESS) {
+					// get the src reg renamed tag
+					ret = get_reg_renamed_tag(&(stage->rs2), rename_table);
+					if (ret!=SUCCESS) {
+						printf("Failed to get renamed tag for R%d\n", stage->rs2);
+					}
 				}
-				else if ((forwarding.rs2_from>=0) && !get_reg_status(cpu, stage->rs1)) {
-					// take the value
-					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
-					stage->rs1_valid = 1;
-					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					stage->rs2_valid = 1;
-				}
-				else if ((forwarding.rs1_from>=0) && !get_reg_status(cpu, stage->rs2)) {
-					// take the value
-					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
-					stage->rs1_valid = 1;
-					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
-					stage->rs2_valid = 1;
+				// check if renaming can be done
+				if (can_rename_reg_tag(rename_table)==SUCCESS) {
+					// change the desc regs tag
+					ret = rename_desc_reg(&(stage->rd), rename_table);
 				}
 				else {
-					// invalid the regs values
-					stage->rs1_valid = 0;
-					stage->rs2_valid = 0;
+					printf("Failed to rename tag for R%d\n", stage->rd);
 				}
 				break;
 
 			case AND:  // ************************************* AND ************************************* //
 				// read only values of last two registers
-				if (!get_reg_status(cpu, stage->rs1) && !get_reg_status(cpu, stage->rs2)) {
-					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
-					stage->rs1_valid = 1;
-					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
-					stage->rs2_valid = 1;
+				// check if src regs are renamed
+				if (check_if_reg_renamed(stage->rs1, rename_table)==SUCCESS) {
+					// get the src reg renamed tag
+					ret = get_reg_renamed_tag(&(stage->rs1), rename_table);
+					if (ret!=SUCCESS) {
+						printf("Failed to get renamed tag for R%d\n", stage->rs1);
+					}
 				}
-				else if (forwarding.status) {
-					// take the value
-					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
-					stage->rs1_valid = 1;
-					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					stage->rs2_valid = 1;
+				// check if src regs are renamed
+				if (check_if_reg_renamed(stage->rs2, rename_table)==SUCCESS) {
+					// get the src reg renamed tag
+					ret = get_reg_renamed_tag(&(stage->rs2), rename_table);
+					if (ret!=SUCCESS) {
+						printf("Failed to get renamed tag for R%d\n", stage->rs2);
+					}
 				}
-				else if ((forwarding.rs2_from>=0) && !get_reg_status(cpu, stage->rs1)) {
-					// take the value
-					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
-					stage->rs1_valid = 1;
-					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					stage->rs2_valid = 1;
-				}
-				else if ((forwarding.rs1_from>=0) && !get_reg_status(cpu, stage->rs2)) {
-					// take the value
-					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
-					stage->rs1_valid = 1;
-					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
-					stage->rs2_valid = 1;
+				// check if renaming can be done
+				if (can_rename_reg_tag(rename_table)==SUCCESS) {
+					// change the desc regs tag
+					ret = rename_desc_reg(&(stage->rd), rename_table);
 				}
 				else {
-					// invalid the regs values
-					stage->rs1_valid = 0;
-					stage->rs2_valid = 0;
+					printf("Failed to rename tag for R%d\n", stage->rd);
 				}
 				break;
 
 			case OR:  // ************************************* OR ************************************* //
 				// read only values of last two registers
-				if (!get_reg_status(cpu, stage->rs1) && !get_reg_status(cpu, stage->rs2)) {
-					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
-					stage->rs1_valid = 1;
-					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
-					stage->rs2_valid = 1;
+				// check if src regs are renamed
+				if (check_if_reg_renamed(stage->rs1, rename_table)==SUCCESS) {
+					// get the src reg renamed tag
+					ret = get_reg_renamed_tag(&(stage->rs1), rename_table);
+					if (ret!=SUCCESS) {
+						printf("Failed to get renamed tag for R%d\n", stage->rs1);
+					}
 				}
-				else if (forwarding.status) {
-					// take the value
-					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
-					stage->rs1_valid = 1;
-					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					stage->rs2_valid = 1;
+				// check if src regs are renamed
+				if (check_if_reg_renamed(stage->rs2, rename_table)==SUCCESS) {
+					// get the src reg renamed tag
+					ret = get_reg_renamed_tag(&(stage->rs2), rename_table);
+					if (ret!=SUCCESS) {
+						printf("Failed to get renamed tag for R%d\n", stage->rs2);
+					}
 				}
-				else if ((forwarding.rs2_from>=0) && !get_reg_status(cpu, stage->rs1)) {
-					// take the value
-					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
-					stage->rs1_valid = 1;
-					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					stage->rs2_valid = 1;
-				}
-				else if ((forwarding.rs1_from>=0) && !get_reg_status(cpu, stage->rs2)) {
-					// take the value
-					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
-					stage->rs1_valid = 1;
-					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
-					stage->rs2_valid = 1;
+				// check if renaming can be done
+				if (can_rename_reg_tag(rename_table)==SUCCESS) {
+					// change the desc regs tag
+					ret = rename_desc_reg(&(stage->rd), rename_table);
 				}
 				else {
-					// invalid the regs values
-					stage->rs1_valid = 0;
-					stage->rs2_valid = 0;
+					printf("Failed to rename tag for R%d\n", stage->rd);
 				}
 				break;
 
 			case EXOR:  // ************************************* EX-OR ************************************* //
 				// read only values of last two registers
-				if (!get_reg_status(cpu, stage->rs1) && !get_reg_status(cpu, stage->rs2)) {
-					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
-					stage->rs1_valid = 1;
-					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
-					stage->rs2_valid = 1;
+				// check if src regs are renamed
+				if (check_if_reg_renamed(stage->rs1, rename_table)==SUCCESS) {
+					// get the src reg renamed tag
+					ret = get_reg_renamed_tag(&(stage->rs1), rename_table);
+					if (ret!=SUCCESS) {
+						printf("Failed to get renamed tag for R%d\n", stage->rs1);
+					}
 				}
-				else if (forwarding.status) {
-					// take the value
-					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
-					stage->rs1_valid = 1;
-					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					stage->rs2_valid = 1;
+				// check if src regs are renamed
+				if (check_if_reg_renamed(stage->rs2, rename_table)==SUCCESS) {
+					// get the src reg renamed tag
+					ret = get_reg_renamed_tag(&(stage->rs2), rename_table);
+					if (ret!=SUCCESS) {
+						printf("Failed to get renamed tag for R%d\n", stage->rs2);
+					}
 				}
-				else if ((forwarding.rs2_from>=0) && !get_reg_status(cpu, stage->rs1)) {
-					// take the value
-					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
-					stage->rs1_valid = 1;
-					stage->rs2_value = cpu->stage[forwarding.rs2_from].rd_value;
-					stage->rs2_valid = 1;
-				}
-				else if ((forwarding.rs1_from>=0) && !get_reg_status(cpu, stage->rs2)) {
-					// take the value
-					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
-					stage->rs1_valid = 1;
-					stage->rs2_value = get_reg_values(cpu, stage, 2, stage->rs2);
-					stage->rs2_valid = 1;
+				// check if renaming can be done
+				if (can_rename_reg_tag(rename_table)==SUCCESS) {
+					// change the desc regs tag
+					ret = rename_desc_reg(&(stage->rd), rename_table);
 				}
 				else {
-					// invalid the regs values
-					stage->rs1_valid = 0;
-					stage->rs2_valid = 0;
+					printf("Failed to rename tag for R%d\n", stage->rd);
 				}
 				break;
 
@@ -783,20 +632,14 @@ int decode(APEX_CPU* cpu) {
 
 			case JUMP:   // ************************************* JUMP ************************************* //
 				// read literal and register values
-				if (!get_reg_status(cpu, stage->rs1)) {
-					stage->rs1_value = get_reg_values(cpu, stage, 1, stage->rs1);
-					stage->rs1_valid = 1;
-					stage->buffer = stage->imm; // keeping literal value in buffer to cal memory to jump in exe stage
-				}
-				else if (forwarding.status) {
-					// take the value
-					stage->rs1_value = cpu->stage[forwarding.rs1_from].rd_value;
-					stage->rs1_valid = 1;
-					stage->buffer = stage->imm; // keeping literal value in buffer to calculate mem add in exe stage
-				}
-				else {
-					// invalid the regs values
-					stage->rs1_valid = 0;
+				stage->buffer = stage->imm; // keeping literal value in buffer to calculate mem add in exe stage
+				// check if src regs are renamed
+				if (check_if_reg_renamed(stage->rs1, rename_table)==SUCCESS) {
+					// get the src reg renamed tag
+					ret = get_reg_renamed_tag(&(stage->rs1), rename_table);
+					if (ret!=SUCCESS) {
+						printf("Failed to get renamed tag for R%d\n", stage->rs1);
+					}
 				}
 				break;
 
@@ -1259,6 +1102,8 @@ int dispatch_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue
 	CPU_Stage* stage = &cpu->stage[DRF];
 	if (stage->executed) {
 		int ret = 0;
+		int lsq_index = -1;
+
 		LS_IQ_Entry ls_iq_entry = {
 			.inst_type = stage->inst_type,
 			.executed = stage->executed,
@@ -1295,11 +1140,14 @@ int dispatch_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue
 			case STORE: case STR: case LOAD: case LDR:
 				// add entry to LSQ and ROB
 				// check if LSQ entry is available and rob entry is available
-				if ((can_add_entry_in_ls_queue(ls_queue)==SUCCESS)&&(can_add_entry_in_reorder_buffer(rob)==SUCCESS)) {
-					ret = add_ls_queue_entry(ls_queue, ls_iq_entry);
-					ret = add_reorder_buffer_entry(rob, rob_entry);
-					if(ret!=SUCCESS) {
-						printf("LSQ ROB ENTRY FAILED\n");
+				if ((can_add_entry_in_issue_queue(issue_queue)==SUCCESS)&&(can_add_entry_in_ls_queue(ls_queue)==SUCCESS)&&(can_add_entry_in_reorder_buffer(rob)==SUCCESS)) {
+					ret = add_ls_queue_entry(ls_queue, ls_iq_entry, &lsq_index);
+					if(ret==SUCCESS) {
+						ret = add_issue_queue_entry(issue_queue, ls_iq_entry, &lsq_index);
+						ret = add_reorder_buffer_entry(rob, rob_entry);
+					}
+					else {
+						printf("LSQ ENTRY FAILED\n");
 					}
 				}
 				else{
@@ -1313,7 +1161,7 @@ int dispatch_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue
 				// add entry to ISQ and ROB
 				// check if IQ entry is available and rob entry is available
 				if ((can_add_entry_in_issue_queue(issue_queue)==SUCCESS)&&(can_add_entry_in_reorder_buffer(rob)==SUCCESS)) {
-					ret = add_issue_queue_entry(issue_queue, ls_iq_entry);
+					ret = add_issue_queue_entry(issue_queue, ls_iq_entry, &lsq_index);
 					ret = add_reorder_buffer_entry(rob, rob_entry);
 					if(ret!=SUCCESS) {
 						printf("IQ ROB ENTRY FAILED\n");
@@ -1389,6 +1237,7 @@ int issue_instruction(APEX_CPU* cpu, APEX_IQ* issue_queue){
 						stage->rs2_value = issue_queue->iq_entries[issue_index[i]].rs2_value;
 						stage->rs2_valid = issue_queue->iq_entries[issue_index[i]].rs2_ready;
 						stage->buffer = issue_queue->iq_entries[issue_index[i]].literal;
+						stage->lsq_index = issue_queue->iq_entries[issue_index[i]].lsq_index;
 						// remove the entry from issue_queue or mark it as invalid
 						issue_queue->iq_entries[issue_index[i]].status = INVALID;
 						issue_queue->iq_entries[issue_index[i]].stage_cycle = INVALID;
@@ -1466,11 +1315,11 @@ int APEX_cpu_run(APEX_CPU* cpu, int num_cycle, APEX_LSQ* ls_queue, APEX_IQ* issu
 
 			push_func_unit_stages(cpu);
 
-			stage_ret = decode(cpu);
+			stage_ret = decode(cpu, rename_table);
 			stage_ret = fetch(cpu); // fetch inst from code memory
 			// dispatch func will have rename call inside
 			print_ls_iq_content(ls_queue, issue_queue);
-			print_rob_rename_content(rob, rename_table);
+			print_rob_and_rename_content(rob, rename_table);
 
 			if ((stage_ret!=HALT)&&(stage_ret!=SUCCESS)) {
 				ret = stage_ret;
