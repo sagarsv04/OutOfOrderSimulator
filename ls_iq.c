@@ -146,38 +146,38 @@ int get_issue_queue_index_to_issue(APEX_IQ* issue_queue, int* issue_index) {
 		// check only alloted entries
 		if (issue_queue->iq_entries[i].status == VALID) {
 			// check if instructions have been in IQ for atleast one cycle
-			if (issue_queue->iq_entries[i].stage_cycle>0) {
-				switch (issue_queue->iq_entries[i].inst_type) {
+			// if (issue_queue->iq_entries[i].stage_cycle>0) {  // no need if we are executing in reverse
+			switch (issue_queue->iq_entries[i].inst_type) {
 
-					// check no src reg instructions
-					case MOVC: case BZ: case BNZ:
+				// check no src reg instructions
+				case MOVC: case BZ: case BNZ:
+					issue_index[i] = i;
+					index_sum += 1;
+					break;
+
+				// check single src reg instructions
+				case MOV: case ADDL: case SUBL: case JUMP:
+					if (issue_queue->iq_entries[i].rs1_ready) {
 						issue_index[i] = i;
 						index_sum += 1;
-						break;
+					}
+					break;
 
-					// check single src reg instructions
-					case MOV: case ADDL: case SUBL: case JUMP:
-						if (issue_queue->iq_entries[i].rs1_ready) {
-							issue_index[i] = i;
-							index_sum += 1;
-						}
-						break;
+				// check two src reg instructions
+				case ADD: case SUB: case MUL: case DIV: case AND: case OR: case EXOR:
+					if ((issue_queue->iq_entries[i].rs1_ready)&&(issue_queue->iq_entries[i].rs2_ready)) {
+						issue_index[i] = i;
+						index_sum += 1;
+					}
+					break;
 
-					// check two src reg instructions
-					case ADD: case SUB: case MUL: case DIV: case AND: case OR: case EXOR:
-						if ((issue_queue->iq_entries[i].rs1_ready)&&(issue_queue->iq_entries[i].rs2_ready)) {
-							issue_index[i] = i;
-							index_sum += 1;
-						}
-						break;
-
-					default:
-						break;
-				}
+				default:
+					break;
 			}
-			else {
-				issue_queue->iq_entries[i].stage_cycle += 1;
-			}
+			// }
+			// else {
+			// 	issue_queue->iq_entries[i].stage_cycle += 1;
+			// }
 		}
 		else {
 			// even if inst is invalid inc stage cycle to know how long inst has been in IQ

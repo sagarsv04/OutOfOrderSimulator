@@ -1344,11 +1344,11 @@ int issue_instruction(APEX_CPU* cpu, APEX_IQ* issue_queue){
 	// check if respective FU is free and All Regs Value are Valid then issue the instruction
 	// get issue_index of all the instruction
 	int ret = 0;
-	int issue_index[IQ_SIZE] = {-1};
+	int issue_index[IQ_SIZE] = {[0 ... IQ_SIZE-1] = -1};
 	ret = get_issue_queue_index_to_issue(issue_queue, issue_index);
 	if (ret==SUCCESS) {
 		char* inst_type_str = (char*) malloc(10);
-		for (int i; i<IQ_SIZE; i++) {
+		for (int i=0; i<IQ_SIZE; i++) {
 			if (issue_index[i]>-1) {
 				int stage_num = -1;
 
@@ -1458,10 +1458,14 @@ int APEX_cpu_run(APEX_CPU* cpu, int num_cycle, APEX_LSQ* ls_queue, APEX_IQ* issu
 
 			int stage_ret = 0;
 			stage_ret = commit_instruction(cpu, rob, rename_table);
-			stage_ret = execute_instruction(cpu);
+			// adding inst to FU
 			stage_ret = issue_instruction(cpu, issue_queue);
-			stage_ret =
-			dispatch_instruction(cpu, ls_queue, issue_queue, rob, rename_table);
+			stage_ret = execute_instruction(cpu);
+			// adding inst to IQ, LSQ, ROB
+			stage_ret = dispatch_instruction(cpu, ls_queue, issue_queue, rob, rename_table);
+
+			push_func_unit_stages(cpu);
+
 			stage_ret = decode(cpu);
 			stage_ret = fetch(cpu); // fetch inst from code memory
 			// dispatch func will have rename call inside
@@ -1471,7 +1475,6 @@ int APEX_cpu_run(APEX_CPU* cpu, int num_cycle, APEX_LSQ* ls_queue, APEX_IQ* issu
 			if ((stage_ret!=HALT)&&(stage_ret!=SUCCESS)) {
 				ret = stage_ret;
 			}
-			push_func_unit_stages(cpu);
 		}
 	}
 
