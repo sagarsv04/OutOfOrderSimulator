@@ -1202,7 +1202,7 @@ int issue_instruction(APEX_CPU* cpu, APEX_IQ* issue_queue){
 
 				switch (issue_queue->iq_entries[issue_index[i]].inst_type) {
 
-					case MOVC: case MOV: case ADD: case ADDL: case SUB: case SUBL: case DIV: case AND: case OR: case EXOR:
+					case STORE: case STR: case LOAD: case LDR: case MOVC: case MOV: case ADD: case ADDL: case SUB: case SUBL: case DIV: case AND: case OR: case EXOR:
 						stage_num = INT_ONE;
 						break;
 

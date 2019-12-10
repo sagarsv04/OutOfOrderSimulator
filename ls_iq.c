@@ -157,7 +157,7 @@ int get_issue_queue_index_to_issue(APEX_IQ* issue_queue, int* issue_index) {
 					break;
 
 				// check single src reg instructions
-				case MOV: case ADDL: case SUBL: case JUMP:
+				case STORE: case LOAD: case MOV: case ADDL: case SUBL: case JUMP:
 					if (issue_queue->iq_entries[i].rs1_ready) {
 						issue_index[i] = i;
 						index_sum += 1;
@@ -165,7 +165,7 @@ int get_issue_queue_index_to_issue(APEX_IQ* issue_queue, int* issue_index) {
 					break;
 
 				// check two src reg instructions
-				case ADD: case SUB: case MUL: case DIV: case AND: case OR: case EXOR:
+				case STR: case LDR: case ADD: case SUB: case MUL: case DIV: case AND: case OR: case EXOR:
 					if ((issue_queue->iq_entries[i].rs1_ready)&&(issue_queue->iq_entries[i].rs2_ready)) {
 						issue_index[i] = i;
 						index_sum += 1;
