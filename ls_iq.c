@@ -171,7 +171,8 @@ int get_issue_queue_index_to_issue(APEX_IQ* issue_queue, int* issue_index) {
 						index_sum += 1;
 					}
 					break;
-
+				// confirm if for Store we need to check all three src reg before issuing
+				// or the src reg (desc rd) is checked in LSQ before its issueed from LSQ to Mem stage
 				default:
 					break;
 			}
@@ -285,9 +286,9 @@ void print_ls_iq_content(APEX_LSQ* ls_queue, APEX_IQ* issue_queue) {
 							"\t%d\t|"
 							"\t%d\t|"
 							"\t%.5s\t|"
-							"\tR%02d-%d\t|"
-							"\tR%02d-%d-%d\t|"
-							"\tR%02d-%d-%d\t|"
+							"\tR%02d-%05d\t|"
+							"\tR%02d-%05d-%d\t|"
+							"\tR%02d-%05d-%d\t|"
 							"\t#%02d\t|"
 							"\t%02d\n",
 							i,
@@ -320,9 +321,9 @@ void print_ls_iq_content(APEX_LSQ* ls_queue, APEX_IQ* issue_queue) {
 							"\t%.5s\t|"
 							"\t%d\t|"
 							"\t%d\t|"
-							"\tR%02d-%d\t|"
-							"\tR%02d-%d\t|"
-							"\tR%02d-%d\t|"
+							"\tR%02d-%05d\t|"
+							"\tR%02d-%05d\t|"
+							"\tR%02d-%05d\t|"
 							"\t#%02d\n",
 	 						i,
 							ls_queue->lsq_entries[i].status,

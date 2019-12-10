@@ -162,6 +162,26 @@ void print_cpu_content(APEX_CPU* cpu) {
 }
 
 
+void set_arch_reg_status(APEX_CPU* cpu, APEX_RENAME* rename_table, int reg_number, int status) {
+	// Set Reg Status function
+	// NOTE: insted of set inc or dec regs_invalid
+	if (reg_number > REGISTER_FILE_SIZE) {
+		// Segmentation fault
+		fprintf(stderr, "Segmentation fault for Register location :: %d\n", reg_number);
+	}
+	else {
+		int src_reg = -1;
+		src_reg = get_phy_reg_renamed_tag(reg_number, rename_table);
+		if (src_reg<0) {
+			;// the phy reg is not tagged with arch rsgs
+		}
+		else {
+			set_reg_status(cpu, src_reg, status);
+		}
+	}
+}
+
+
 /*
  * ########################################## Fetch Stage ##########################################
 */
@@ -676,7 +696,7 @@ int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 /*
  * ########################################## Int FU One Stage ##########################################
 */
-int int_one_stage(APEX_CPU* cpu) {
+int int_one_stage(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 
 	CPU_Stage* stage = &cpu->stage[INT_ONE];
 	stage->executed = 0;
@@ -689,7 +709,8 @@ int int_one_stage(APEX_CPU* cpu) {
 			// ************************************* LOAD to EX-OR ************************************* //
 			case LOAD: case LDR: case MOVC: case MOV: case ADD: case ADDL: case SUB: case SUBL: case DIV: case AND: case OR: case EXOR:
 				// make desitination regs invalid count increment by one following instructions stall
-				set_reg_status(cpu, stage->rd, 1);
+				set_arch_reg_status(cpu, rename_table, stage->rd, 1);
+				stage->rd_valid = INVALID;
 				break;
 
 			case JUMP:  // ************************************* JUMP ************************************* //
@@ -738,21 +759,25 @@ int int_two_stage(APEX_CPU* cpu) {
 			case MOVC:	// ************************************* MOVC ************************************* //
 				// move buffer value to rd_value so it can be forwarded
 				stage->rd_value = stage->buffer;
+				stage->rd_valid = VALID;
 				break;
 
 			case MOV:	// ************************************* MOV ************************************* //
 				// move rs1_value value to rd_value so it can be forwarded
 				stage->rd_value = stage->rs1_value;
+				stage->rd_valid = VALID;
 				break;
 
 			case ADD:	// ************************************* ADD ************************************* //
 				// add registers value and keep in rd_value for mem / writeback stage
 				if ((stage->rs2_value > 0 && stage->rs1_value > INT_MAX - stage->rs2_value) ||
 					(stage->rs2_value < 0 && stage->rs1_value < INT_MIN - stage->rs2_value)) {
+					stage->rd_valid = INVALID;
 					cpu->flags[OF] = 1; // there is an overflow
 				}
 				else {
 					stage->rd_value = stage->rs1_value + stage->rs2_value;
+					stage->rd_valid = VALID;
 					cpu->flags[OF] = 0; // there is no overflow
 				}
 				break;
@@ -761,10 +786,12 @@ int int_two_stage(APEX_CPU* cpu) {
 				// add literal and register value and keep in rd_value for mem / writeback stage
 				if ((stage->buffer > 0 && stage->rs1_value > INT_MAX - stage->buffer) ||
 					(stage->buffer < 0 && stage->rs1_value < INT_MIN - stage->buffer)) {
+					stage->rd_valid = INVALID;
 					cpu->flags[OF] = 1; // there is an overflow
 				}
 				else {
 					stage->rd_value = stage->rs1_value + stage->buffer;
+					stage->rd_valid = VALID;
 					cpu->flags[OF] = 0; // there is no overflow
 				}
 				break;
@@ -773,10 +800,12 @@ int int_two_stage(APEX_CPU* cpu) {
 				// sub registers value and keep in rd_value for mem / writeback stage
 				if (stage->rs2_value > stage->rs1_value) {
 					stage->rd_value = stage->rs1_value - stage->rs2_value;
+					stage->rd_valid = INVALID;
 					cpu->flags[CF] = 1; // there is an carry
 				}
 				else {
 					stage->rd_value = stage->rs1_value - stage->rs2_value;
+					stage->rd_valid = VALID;
 					cpu->flags[CF] = 0; // there is no carry
 				}
 				break;
@@ -785,10 +814,12 @@ int int_two_stage(APEX_CPU* cpu) {
 				// sub literal and register value and keep in rd_value for mem / writeback stage
 				if (stage->buffer > stage->rs1_value) {
 					stage->rd_value = stage->rs1_value - stage->buffer;
+					stage->rd_valid = INVALID;
 					cpu->flags[CF] = 1; // there is an carry
 				}
 				else {
 					stage->rd_value = stage->rs1_value - stage->buffer;
+					stage->rd_valid = VALID;
 					cpu->flags[CF] = 0; // there is no carry
 				}
 				break;
@@ -797,26 +828,31 @@ int int_two_stage(APEX_CPU* cpu) {
 				// div registers value and keep in rd_value for mem / writeback stage
 				if (stage->rs2_value != 0) {
 					stage->rd_value = stage->rs1_value / stage->rs2_value;
+					stage->rd_valid = VALID;
 				}
 				else {
 					fprintf(stderr, "Division By Zero Returning Value Zero\n");
 					stage->rd_value = 0;
+					stage->rd_valid = INVALID;
 				}
 				break;
 
 			case AND:	// ************************************* AND ************************************* //
 				// logical AND registers value and keep in rd_value for mem / writeback stage
 				stage->rd_value = stage->rs1_value & stage->rs2_value;
+				stage->rd_valid = VALID;
 				break;
 
 			case OR:	// ************************************* OR ************************************* //
 				// logical OR registers value and keep in rd_value for mem / writeback stage
 				stage->rd_value = stage->rs1_value | stage->rs2_value;
+				stage->rd_valid = VALID;
 				break;
 
 			case EXOR:	// ************************************* EX-OR ************************************* //
 				// logical OR registers value and keep in rd_value for mem / writeback stage
 				stage->rd_value = stage->rs1_value ^ stage->rs2_value;
+				stage->rd_valid = VALID;
 				break;
 
 			case JUMP:  // ************************************* JUMP ************************************* //
@@ -845,7 +881,7 @@ int int_two_stage(APEX_CPU* cpu) {
  * ########################################## Mul FU One Stage ##########################################
 */
 
-int mul_one_stage(APEX_CPU* cpu) {
+int mul_one_stage(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 
 	CPU_Stage* stage = &cpu->stage[MUL_ONE];
 	stage->executed = 0;
@@ -856,7 +892,8 @@ int mul_one_stage(APEX_CPU* cpu) {
 			case MUL:  // ************************************* MUL ************************************* //
 				// mul registers value and keep in rd_value for mem / writeback stage
 				// if possible check y it requires 3 cycle
-				stage->rd_value = stage->rs1_value * stage->rs2_value;
+				set_arch_reg_status(cpu, rename_table, stage->rd, 1);
+				stage->rd_valid = INVALID;
 				break;
 
 			default:
@@ -888,6 +925,7 @@ int mul_two_stage(APEX_CPU* cpu) {
 				// mul registers value and keep in rd_value for mem / writeback stage
 				// if possible check y it requires 3 cycle
 				stage->rd_value = stage->rs1_value * stage->rs2_value;
+				stage->rd_valid = INVALID;
 				break;
 
 			default:
@@ -919,6 +957,7 @@ int mul_three_stage(APEX_CPU* cpu) {
 				// mul registers value and keep in rd_value for mem / writeback stage
 				// if possible check y it requires 3 cycle
 				stage->rd_value = stage->rs1_value * stage->rs2_value;
+				stage->rd_valid = VALID;
 				break;
 
 			default:
@@ -1011,9 +1050,11 @@ int mem_stage(APEX_CPU* cpu) {
 					if (stage->stage_cycle == 3) {
 						// wait for 3 cycles
 						cpu->data_memory[stage->mem_address] = stage->rd_value;
+						stage->rd_valid = VALID;
 					}
 					else {
 						stage->stage_cycle += 1;
+						stage->rd_valid = INVALID;
 					}
 				}
 				break;
@@ -1028,9 +1069,11 @@ int mem_stage(APEX_CPU* cpu) {
 					if (stage->stage_cycle == 3) {
 						// wait for 3 cycles
 						stage->rd_value = cpu->data_memory[stage->mem_address];
+						stage->rd_valid = VALID;
 					}
 					else {
 						stage->stage_cycle += 1;
+						stage->rd_valid = INVALID;
 					}
 				}
 				break;
@@ -1056,42 +1099,80 @@ int mem_stage(APEX_CPU* cpu) {
  * ########################################## Writeback Stage ##########################################
 */
 
-int writeback_stage(APEX_CPU* cpu) {
+int writeback_stage(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APEX_ROB* rob, APEX_RENAME* rename_table) {
 
-	CPU_Stage* stage = &cpu->stage[WB];
-	stage->executed = 0;
-	if ((!stage->stalled)&&(!stage->empty)) {
-		/* Read data from register file for store */
-		switch(stage->inst_type) {
+	// take MUL_THREE, INT_TWO Stage and update the ROB entry so in next cycle
+	// instruction can be commited
 
-			case STORE: case STR:  // ************************************* STORE or STR ************************************* //
-				break;
-			// ************************************* LOAD to EX-OR ************************************* //
-			case LOAD: case LDR: case MOVC: case MOV: case ADD: case ADDL: case SUB: case SUBL: case DIV: case AND: case OR: case EXOR:
-				// make desitination regs invalid count increment by one following instructions stall
-				set_reg_status(cpu, stage->rd, -1);
-				// cpu->regs[stage->rd] = stage->rd_value;
-				// cpu->flags[ZF] = 1; // computation resulted value zero
-				break;
+	// ************************************* INT_TWO ************************************* //
 
-			case JUMP:  // ************************************* JUMP ************************************* //
-				break;
+	CPU_Stage* stage = &cpu->stage[INT_TWO];
 
-			case HALT:  // ************************************* HALT ************************************* //
-				break;
+	if ((stage->executed)&&(!stage->empty)) {
+		if (stage->rd_valid) {
+			int ret = -1;
+			ROB_Entry rob_entry = {
+				.inst_type = stage->inst_type,
+				.executed = stage->executed,
+				.pc = stage->pc,
+				.rd = stage->rd,
+				.rd_value = stage->rd_value,
+				.rd_valid = stage->rd_valid,
+				.rs1 = stage->rs1,
+				.rs1_value = stage->rs1_value,
+				.rs1_valid = stage->rs1_valid,
+				.rs2 = stage->rs2,
+				.rs2_value = stage->rs2_value,
+				.rs2_valid = stage->rs2_valid,
+				.buffer = stage->buffer,
+				.stage_cycle = stage->stage_cycle};
 
-			case NOP:  // ************************************* NOP ************************************* //
-				break;
-
-			default:
-				break;
+			ret = update_reorder_buffer_entry_data(rob, rob_entry);
+			if (ret!=SUCCESS) {
+				if (ENABLE_DEBUG_MESSAGES_L2) {
+					fprintf(stderr, "Failed to Update Rob Entry (%d) for pc(%d):: %.5s\n", ret, stage->pc, stage->opcode);
+				}
+			}
 		}
-		stage->executed = 1;
+		else {
+			if (ENABLE_DEBUG_MESSAGES_L2) {
+				fprintf(stderr, "INT Two Stage Value not Ready for Phy Reg R%d for pc(%d):: %.5s\n", stage->rd, stage->pc, stage->opcode);
+			}
+		}
 	}
 
-	if (ENABLE_DEBUG_MESSAGES) {
-		print_stage_content("Writeback", stage);
-	}
+	// ************************************* MUL_THREE ************************************* //
+
+	// CPU_Stage* stage = &cpu->stage[MUL_THREE];
+	//
+	// if ((stage->executed)&&(!stage->empty)) {
+	// 	int ret = -1;
+	// 	if (stage->rd_valid) {
+	// 		ROB_Entry rob_entry = {
+	// 			.inst_type = stage->inst_type,
+	// 			.executed = stage->executed,
+	// 			.pc = stage->pc,
+	// 			.rd = stage->rd,
+	// 			.rd_value = stage->rd_value,
+	// 			.rd_valid = stage->rd_valid,
+	// 			.rs1 = stage->rs1,
+	// 			.rs1_value = stage->rs1_value,
+	// 			.rs1_valid = stage->rs1_valid,
+	// 			.rs2 = stage->rs2,
+	// 			.rs2_value = stage->rs2_value,
+	// 			.rs2_valid = stage->rs2_valid,
+	// 			.buffer = stage->buffer,
+	// 			.stage_cycle = stage->stage_cycle};
+	//
+	// 		ret = update_reorder_buffer_entry_data(rob, rob_entry)
+	// 		if (ret!=SUCCESS) {
+	// 			printf("Failed to Update Rob Entry (%d) for pc(%d):: %.5s\n", ret, stage->pc, stage->opcode);
+	// 		}
+	// 	}
+	// 	else {
+	// 		printf("MUL Three Stage Value not Ready for Phy Reg R%d for pc(%d):: %.5s\n", stage->rd, stage->pc, stage->opcode);
+	// 	}
+	// }
 
 	return 0;
 }
@@ -1147,7 +1228,9 @@ int dispatch_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue
 						ret = add_reorder_buffer_entry(rob, rob_entry);
 					}
 					else {
-						printf("LSQ ENTRY FAILED\n");
+						if (ENABLE_DEBUG_MESSAGES_L2) {
+							fprintf(stderr, "LSQ IQ ROB ENTRY FAILED for Inst Type :: %d\n", stage->inst_type);
+						}
 					}
 				}
 				else{
@@ -1164,7 +1247,9 @@ int dispatch_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue
 					ret = add_issue_queue_entry(issue_queue, ls_iq_entry, &lsq_index);
 					ret = add_reorder_buffer_entry(rob, rob_entry);
 					if(ret!=SUCCESS) {
-						printf("IQ ROB ENTRY FAILED\n");
+						if (ENABLE_DEBUG_MESSAGES_L2) {
+							fprintf(stderr, "IQ ROB ENTRY FAILED for Inst Type :: %d\n", stage->inst_type);
+						}
 					}
 				}
 				else{
@@ -1180,7 +1265,9 @@ int dispatch_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue
 	}
 	else {
 		if (!stage->empty){
-			fprintf(stderr, "Dispatch failed DRF has non executed instruction :: pc(%d) %s\n", stage->pc, stage->opcode);
+			if (ENABLE_DEBUG_MESSAGES_L2) {
+				fprintf(stderr, "Dispatch failed DRF has non executed instruction :: pc(%d) %s\n", stage->pc, stage->opcode);
+			}
 		}
 	}
 
@@ -1243,30 +1330,35 @@ int issue_instruction(APEX_CPU* cpu, APEX_IQ* issue_queue){
 						issue_queue->iq_entries[issue_index[i]].stage_cycle = INVALID;
 					}
 				}
+				if (ENABLE_DEBUG_MESSAGES_L2) {
+					fprintf(stderr, "Inst issueed to Unit :: %d\n", stage_num);
+				}
 			}
 		}
 		free(inst_type_str);
 	}
 	else {
-		printf("No Inst To Issue\n");
+		if (ENABLE_DEBUG_MESSAGES_L2) {
+			fprintf(stderr, "No Inst to issue to Unit\n");
+		}
 	}
 
 	return 0;
 }
 
 
-int execute_instruction(APEX_CPU* cpu) {
+int execute_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APEX_ROB* rob, APEX_RENAME* rename_table) {
 	// check if respective FU has any instructions and execute them
 	// call each unit one by one
 	// branch will be called last idk y ?
-	writeback_stage(cpu);
-	int_one_stage(cpu);
+	int_one_stage(cpu, rename_table);
 	int_two_stage(cpu);
-	mul_one_stage(cpu);
+	mul_one_stage(cpu, rename_table);
 	mul_two_stage(cpu);
 	mul_three_stage(cpu);
 	branch_stage(cpu);
 	mem_stage(cpu);
+	writeback_stage(cpu, ls_queue, issue_queue, rob, rename_table);
 
 	return 0;
 }
@@ -1274,9 +1366,35 @@ int execute_instruction(APEX_CPU* cpu) {
 
 int commit_instruction(APEX_CPU* cpu, APEX_ROB* rob, APEX_RENAME* rename_table) {
 	// check if rob entry is valid and data is valid then commit instruction and free rob entry
+	int ret = -1;
+
+	ROB_Entry* rob_entry = malloc(sizeof(*rob_entry));
+	// entry removed from rob
+	ret = commit_reorder_buffer_entry(rob, rob_entry);
+
+	if (ret==SUCCESS) {
+		// change decs reg in cpu
+		// undo the renaming
+		// put the value in arch reg and increment valid valid count
+		int src_reg = -1;
+		src_reg = get_phy_reg_renamed_tag(rob_entry->rd, rename_table);
+		if (src_reg<0) {
+			;// the phy reg is not tagged with arch rsgs
+		}
+		else {
+			// free the physical regs
+			rename_table->reg_rename[rob_entry->rd].tag_valid = INVALID;
+
+			cpu->regs[src_reg] = rob_entry->rd_value;
+			set_reg_status(cpu, src_reg, -1);
+		}
+	}
+	else {
+		printf("Failed to Commit Rob Entry\n");
+	}
+
 	return 0;
 }
-
 
 /*
  * ########################################## CPU Run ##########################################
@@ -1309,7 +1427,7 @@ int APEX_cpu_run(APEX_CPU* cpu, int num_cycle, APEX_LSQ* ls_queue, APEX_IQ* issu
 			stage_ret = commit_instruction(cpu, rob, rename_table);
 			// adding inst to FU
 			stage_ret = issue_instruction(cpu, issue_queue);
-			stage_ret = execute_instruction(cpu);
+			stage_ret = execute_instruction(cpu, ls_queue, issue_queue, rob, rename_table);
 			// adding inst to IQ, LSQ, ROB
 			stage_ret = dispatch_instruction(cpu, ls_queue, issue_queue, rob, rename_table);
 

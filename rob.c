@@ -126,7 +126,7 @@ int update_reorder_buffer_entry_data(APEX_ROB* rob, ROB_Entry rob_entry) {
 		else {
 			if (rob->rob_entry[update_position].rd == rob_entry.rd) {
 				rob->rob_entry[update_position].rd_value = rob_entry.rd_value;
-				rob->rob_entry[update_position].valid = 1;
+				rob->rob_entry[update_position].valid = VALID;
 			}
 			else {
 				return ERROR; // found the pc value inst but failed to match desc reg
@@ -137,7 +137,7 @@ int update_reorder_buffer_entry_data(APEX_ROB* rob, ROB_Entry rob_entry) {
 }
 
 
-int commit_reorder_buffer_entry(APEX_ROB* rob, int* cpu_reg, int* cpu_reg_valid) {
+int commit_reorder_buffer_entry(APEX_ROB* rob, ROB_Entry* rob_entry) {
 
 	if (rob->commit_ptr == ROB_SIZE) {
 		rob->commit_ptr = 0; // go back to zero index
@@ -147,10 +147,21 @@ int commit_reorder_buffer_entry(APEX_ROB* rob, int* cpu_reg, int* cpu_reg_valid)
 	}
 	else {
 		// inst ready to commit
-		// change decs reg in cpu
-		cpu_reg[rob->rob_entry[rob->commit_ptr].rd] = rob->rob_entry[rob->commit_ptr].rd_value;
-		// decrement reg invalid count in cpu
-		cpu_reg_valid[rob->rob_entry[rob->commit_ptr].rd] -= 1;
+		rob_entry->inst_type = rob->rob_entry[rob->commit_ptr].inst_type;
+		rob_entry->executed = rob->rob_entry[rob->commit_ptr].status;
+		rob_entry->pc = rob->rob_entry[rob->commit_ptr].inst_ptr;
+		rob_entry->rd = rob->rob_entry[rob->commit_ptr].rd;
+		rob_entry->rd_value = rob->rob_entry[rob->commit_ptr].rd_value;
+		rob_entry->rd_valid = rob->rob_entry[rob->commit_ptr].valid;
+		rob_entry->rs1 = -9999;
+		rob_entry->rs1_value = -9999;
+		rob_entry->rs1_valid = INVALID;
+		rob_entry->rs2 = -9999;
+		rob_entry->rs2_value = -9999;
+		rob_entry->rs2_valid = INVALID;
+		rob_entry->buffer = -9999;
+		rob_entry->stage_cycle = INVALID;
+
 		// free the rob entry
 		rob->rob_entry[rob->commit_ptr].status = INVALID;
 		rob->rob_entry[rob->commit_ptr].inst_type = -9999;
@@ -186,14 +197,14 @@ int can_rename_reg_tag(APEX_RENAME* rename_table) {
 }
 
 
-int check_if_reg_renamed(int any_reg, APEX_RENAME* rename_table) {
-
+int check_if_reg_renamed(int arch_reg, APEX_RENAME* rename_table) {
+	// this tells if the arch regs are already renamed
 	// check in reverse order
 	int rename_position = -1;
 
 	for (int i=RENAME_TABLE_SIZE-1; i>=0; i--) {
-		if (rename_table->reg_rename[i].tag_valid==INVALID) {
-			if (rename_table->reg_rename[i].rename_tag == any_reg) {
+		if (rename_table->reg_rename[i].tag_valid==VALID) {
+			if (rename_table->reg_rename[i].rename_tag == arch_reg) {
 				rename_position = i;
 				break;
 			}
@@ -209,12 +220,12 @@ int check_if_reg_renamed(int any_reg, APEX_RENAME* rename_table) {
 
 
 int get_reg_renamed_tag(int* src_reg, APEX_RENAME* rename_table) {
-
+	// this gives already renamed arch regs
 	// check in reverse order
 	int rename_position = -1;
 
 	for (int i=RENAME_TABLE_SIZE-1; i>=0; i--) {
-		if (rename_table->reg_rename[i].tag_valid==INVALID) {
+		if (rename_table->reg_rename[i].tag_valid==VALID) {
 			if (rename_table->reg_rename[i].rename_tag == *src_reg) {
 				rename_position = i;
 				break;
@@ -225,13 +236,27 @@ int get_reg_renamed_tag(int* src_reg, APEX_RENAME* rename_table) {
 		return FAILURE;
 	}
 	else {
-		*src_reg = rename_table->reg_rename[rename_position].rename_tag;
+		*src_reg = rename_position;
 	}
 	return SUCCESS;
 }
 
-int rename_desc_reg(int* desc_reg, APEX_RENAME* rename_table) {
 
+int get_phy_reg_renamed_tag(int phy_reg, APEX_RENAME* rename_table) {
+	// any_reg is P
+	// check in reverse order
+	int arch_reg = -1;
+
+	if (rename_table->reg_rename[phy_reg].tag_valid==VALID) {
+		arch_reg = rename_table->reg_rename[phy_reg].rename_tag;
+	}
+
+	return arch_reg;
+}
+
+
+int rename_desc_reg(int* desc_reg, APEX_RENAME* rename_table) {
+	// this actually renames the regs
 	int rename_position = -1;
 
 	for (int i=0; i<RENAME_TABLE_SIZE; i++) {
@@ -273,7 +298,7 @@ void print_rob_and_rename_content(APEX_ROB* rob, APEX_RENAME* rename_table) {
 							"\t%d\t|"
 							"\t%d\t|"
 							"\t%.5s\t|"
-							"\tR%02d-%d\t|"
+							"\tR%02d-%05d\t|"
 							"\t%d\t|"
 							"\t%d\n",
 		 					i,

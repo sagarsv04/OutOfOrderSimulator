@@ -21,6 +21,7 @@
 
 /* Set this flag to 1 to enable debug messages */
 #define ENABLE_DEBUG_MESSAGES 1
+#define ENABLE_DEBUG_MESSAGES_L2 1
 
 /* Set this flag to 1 to enable print of Regs, Flags, Memory */
 #define ENABLE_REG_MEM_STATUS_PRINT 1
@@ -149,13 +150,15 @@ int APEX_cpu_run(APEX_CPU* cpu, int num_cycle, APEX_LSQ* ls_queue, APEX_IQ* issu
 
 void APEX_cpu_stop(APEX_CPU* cpu);
 
+void set_arch_reg_status(APEX_CPU* cpu, APEX_RENAME* rename_table, int reg_number, int status);
+
 // ##################### Sub calls ##################### //
 
-int int_one_stage(APEX_CPU* cpu);
+int int_one_stage(APEX_CPU* cpu, APEX_RENAME* rename_table);
 
 int int_two_stage(APEX_CPU* cpu);
 
-int mul_one_stage(APEX_CPU* cpu);
+int mul_one_stage(APEX_CPU* cpu, APEX_RENAME* rename_table);
 
 int mul_two_stage(APEX_CPU* cpu);
 
@@ -165,7 +168,7 @@ int branch_stage(APEX_CPU* cpu);
 
 int mem_stage(APEX_CPU* cpu);
 
-int writeback_stage(APEX_CPU* cpu);
+int writeback_stage(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APEX_ROB* rob, APEX_RENAME* rename_table);
 
 // ##################### Out-of-Order ##################### //
 
@@ -177,7 +180,7 @@ int dispatch_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue
 
 int issue_instruction(APEX_CPU* cpu, APEX_IQ* issue_queue);
 
-int execute_instruction(APEX_CPU* cpu); // cpu execute will hav diff FU calls
+int execute_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APEX_ROB* rob, APEX_RENAME* rename_table); // cpu execute will hav diff FU calls
 
 int commit_instruction(APEX_CPU* cpu, APEX_ROB* rob, APEX_RENAME* rename_table);
 

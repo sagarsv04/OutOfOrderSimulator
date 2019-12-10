@@ -91,8 +91,10 @@ int rename_desc_reg(int* desc_reg, APEX_RENAME* rename_table);
 int check_if_reg_renamed(int any_reg, APEX_RENAME* rename_table);
 int get_reg_renamed_tag(int* src_reg, APEX_RENAME* rename_table);
 
+int get_phy_reg_renamed_tag(int reg_number, APEX_RENAME* rename_table);
+
 int update_reorder_buffer_entry_data(APEX_ROB* rob, ROB_Entry rob_entry);
-int commit_reorder_buffer_entry(APEX_ROB* rob, int* cpu_reg, int* cpu_reg_valid);
+int commit_reorder_buffer_entry(APEX_ROB* rob, ROB_Entry* rob_entry);
 
 void print_rob_and_rename_content(APEX_ROB* rob, APEX_RENAME* rename_table);
 
