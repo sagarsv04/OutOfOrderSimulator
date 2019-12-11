@@ -166,7 +166,7 @@ int commit_reorder_buffer_entry(APEX_ROB* rob, ROB_Entry* rob_entry) {
 		// free the rob entry
 		rob->rob_entry[rob->commit_ptr].status = INVALID;
 		rob->rob_entry[rob->commit_ptr].inst_type = INVALID;
-		rob->rob_entry[rob->commit_ptr].inst_ptr = -1;
+		rob->rob_entry[rob->commit_ptr].inst_ptr = INVALID;
 		rob->rob_entry[rob->commit_ptr].rd = INVALID;
 		rob->rob_entry[rob->commit_ptr].rd_value = INVALID;
 		rob->rob_entry[rob->commit_ptr].exception = 0;

@@ -80,6 +80,10 @@ int get_code_index(int pc) {
 	return (pc - 4000) / 4;
 }
 
+
+/*
+ * ########################################## Print Stage ##########################################
+*/
 static void print_instruction(CPU_Stage* stage) {
 	// This function prints operands of instructions in stages.
 	switch (stage->inst_type) {
@@ -162,6 +166,9 @@ void print_cpu_content(APEX_CPU* cpu) {
 }
 
 
+/*
+ * ########################################## Regs Status Stage ##########################################
+*/
 void set_arch_reg_status(APEX_CPU* cpu, APEX_RENAME* rename_table, int reg_number, int status) {
 	// Set Reg Status function
 	// NOTE: insted of set inc or dec regs_invalid
@@ -185,7 +192,6 @@ void set_arch_reg_status(APEX_CPU* cpu, APEX_RENAME* rename_table, int reg_numbe
 /*
  * ########################################## Fetch Stage ##########################################
 */
-
 int fetch(APEX_CPU* cpu) {
 
 	CPU_Stage* stage = &cpu->stage[F];
@@ -250,7 +256,6 @@ int fetch(APEX_CPU* cpu) {
 /*
  * ########################################## Decode Stage ##########################################
 */
-
 int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 
 	CPU_Stage* stage = &cpu->stage[DRF];
@@ -876,10 +881,10 @@ int int_two_stage(APEX_CPU* cpu) {
 	return 0;
 }
 
+
 /*
  * ########################################## Mul FU One Stage ##########################################
 */
-
 int mul_one_stage(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 
 	CPU_Stage* stage = &cpu->stage[MUL_ONE];
@@ -908,10 +913,10 @@ int mul_one_stage(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 	return 0;
 }
 
+
 /*
  * ########################################## Mul FU Two Stage ##########################################
 */
-
 int mul_two_stage(APEX_CPU* cpu) {
 
 	CPU_Stage* stage = &cpu->stage[MUL_TWO];
@@ -940,10 +945,10 @@ int mul_two_stage(APEX_CPU* cpu) {
 	return 0;
 }
 
+
 /*
  * ########################################## Mul FU Three Stage ##########################################
 */
-
 int mul_three_stage(APEX_CPU* cpu) {
 
 	CPU_Stage* stage = &cpu->stage[MUL_THREE];
@@ -972,10 +977,10 @@ int mul_three_stage(APEX_CPU* cpu) {
 	return 0;
 }
 
+
 /*
  * ########################################## Branch FU Stage ##########################################
 */
-
 int branch_stage(APEX_CPU* cpu) {
 
 	CPU_Stage* stage = &cpu->stage[BRANCH];
@@ -1042,10 +1047,10 @@ int branch_stage(APEX_CPU* cpu) {
 	return 0;
 }
 
+
 /*
  * ########################################## Mem FU Stage ##########################################
 */
-
 int mem_stage(APEX_CPU* cpu) {
 
 	CPU_Stage* stage = &cpu->stage[MEM];
@@ -1105,10 +1110,10 @@ int mem_stage(APEX_CPU* cpu) {
 	return 0;
 }
 
+
 /*
  * ########################################## Writeback Stage ##########################################
 */
-
 int writeback_stage(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APEX_ROB* rob, APEX_RENAME* rename_table) {
 
 	// take MUL_THREE, INT_TWO Stage and update the ROB entry so in next cycle
@@ -1150,6 +1155,7 @@ int writeback_stage(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APE
 							fprintf(stderr, "Failed to Update LSQ Entry (%d) for pc(%d):: %.5s\n", ret, stage->pc, stage->opcode);
 						}
 					}
+					continue;
 				}
 			}
 
@@ -1237,6 +1243,9 @@ int writeback_stage(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APE
 }
 
 
+/*
+ * ########################################## Dispatch Stage ##########################################
+*/
 int dispatch_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APEX_ROB* rob, APEX_RENAME* rename_table){
 	// check if ISQ entry is free and ROB entry is free then dispatch the instruction
 	CPU_Stage* stage = &cpu->stage[DRF];
@@ -1334,6 +1343,9 @@ int dispatch_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue
 }
 
 
+/*
+ * ########################################## Issue Stage ##########################################
+*/
 int issue_instruction(APEX_CPU* cpu, APEX_IQ* issue_queue, APEX_LSQ* ls_queue) {
 	// check if respective FU is free and All Regs Value are Valid then issue the instruction
 	// get issue_index of all the instruction
@@ -1392,7 +1404,7 @@ int issue_instruction(APEX_CPU* cpu, APEX_IQ* issue_queue, APEX_LSQ* ls_queue) {
 						// remove the entry from issue_queue or mark it as invalid
 						issue_queue->iq_entries[issue_index[i]].status = INVALID;
 						issue_queue->iq_entries[issue_index[i]].inst_type = INVALID;
-						issue_queue->iq_entries[issue_index[i]].inst_ptr = -1;
+						issue_queue->iq_entries[issue_index[i]].inst_ptr = INVALID;
 						issue_queue->iq_entries[issue_index[i]].rd = INVALID;
 						issue_queue->iq_entries[issue_index[i]].rd_value = INVALID;
 						issue_queue->iq_entries[issue_index[i]].rd_ready = INVALID;
@@ -1448,7 +1460,7 @@ int issue_instruction(APEX_CPU* cpu, APEX_IQ* issue_queue, APEX_LSQ* ls_queue) {
 			// remove the entry from issue_queue or mark it as invalid
 			ls_queue->lsq_entries[lsq_index].status = INVALID;
 			ls_queue->lsq_entries[lsq_index].load_store = INVALID;
-			ls_queue->lsq_entries[lsq_index].inst_ptr = -1;
+			ls_queue->lsq_entries[lsq_index].inst_ptr = INVALID;
 			ls_queue->lsq_entries[lsq_index].mem_valid = INVALID;
 			ls_queue->lsq_entries[lsq_index].rd = INVALID;
 			ls_queue->lsq_entries[lsq_index].rd_value = INVALID;
@@ -1471,6 +1483,9 @@ int issue_instruction(APEX_CPU* cpu, APEX_IQ* issue_queue, APEX_LSQ* ls_queue) {
 }
 
 
+/*
+ * ########################################## Execute Stage ##########################################
+*/
 int execute_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APEX_ROB* rob, APEX_RENAME* rename_table) {
 	// check if respective FU has any instructions and execute them
 	// call each unit one by one

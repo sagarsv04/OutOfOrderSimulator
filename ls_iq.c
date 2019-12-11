@@ -107,8 +107,7 @@ int update_issue_queue_entry(APEX_IQ* issue_queue, LS_IQ_Entry ls_iq_entry) {
 	// array to hold respective reg update positions
 	// int rs1_position[IQ_SIZE] = {-1}; // these can use to see where values got updated
 	// int rs2_position[IQ_SIZE] = {-1};
-	int rs1_pos_sum = 0;
-	int rs2_pos_sum = 0;
+	int update_pos_sum = 0;
 	if (!ls_iq_entry.executed) {
 		return FAILURE;
 	}
@@ -118,22 +117,31 @@ int update_issue_queue_entry(APEX_IQ* issue_queue, LS_IQ_Entry ls_iq_entry) {
 			// check only alloted entries
 			if (issue_queue->iq_entries[i].status == VALID) {
 				// first check rd ie flow and output dependencies
-				if (ls_iq_entry.rd == issue_queue->iq_entries[i].rs1) {
+				if ((ls_iq_entry.rd == issue_queue->iq_entries[i].rs1)&&(issue_queue->iq_entries[i].rs1_ready==INVALID)) {
 					issue_queue->iq_entries[i].rs1_value = ls_iq_entry.rd_value;
 					issue_queue->iq_entries[i].rs1_ready = VALID;
 					// rs1_position[i] = i;
-					rs1_pos_sum += 1;
+					update_pos_sum += 1;
 				}
-				if (ls_iq_entry.rd == issue_queue->iq_entries[i].rs2) {
+				if ((ls_iq_entry.rd == issue_queue->iq_entries[i].rs2)&&(issue_queue->iq_entries[i].rs1_ready==INVALID)) {
 					issue_queue->iq_entries[i].rs2_value = ls_iq_entry.rd_value;
 					issue_queue->iq_entries[i].rs2_ready = VALID;
 					// rs2_position[i] = i;
-					rs2_pos_sum += 1;
+					update_pos_sum += 1;
+				}
+				// this for updating STORE STR Rd
+				if ((issue_queue->iq_entries[i].inst_type==STORE)||(issue_queue->iq_entries[i].inst_type==STR)) {
+					if ((ls_iq_entry.rd == issue_queue->iq_entries[i].rd)&&(issue_queue->iq_entries[i].rd_ready==INVALID)) {
+						issue_queue->iq_entries[i].rd = ls_iq_entry.rd_value;
+						issue_queue->iq_entries[i].rd_ready = VALID;
+						// rs2_position[i] = i;
+						update_pos_sum += 1;
+					}
 				}
 			}
 		}
 	}
-	if ((rs1_pos_sum == 0)&&(rs2_pos_sum == 0)) {
+	if (update_pos_sum == 0) {
 		if (ENABLE_DEBUG_MESSAGES_L2) {
 			fprintf(stderr, "No Update in IQ for Inst %d at pc(%d)\n", ls_iq_entry.inst_type, ls_iq_entry.pc);
 		}
@@ -162,16 +170,32 @@ int get_issue_queue_index_to_issue(APEX_IQ* issue_queue, int* issue_index) {
 					break;
 
 				// check single src reg instructions
-				case STORE: case LOAD: case MOV: case ADDL: case SUBL: case JUMP:
+				case LOAD: case MOV: case ADDL: case SUBL: case JUMP:
 					if (issue_queue->iq_entries[i].rs1_ready) {
 						issue_index[i] = i;
 						index_sum += 1;
 					}
 					break;
 
+				// check single src/desc reg instructions
+				case STORE:
+					if ((issue_queue->iq_entries[i].rs1_ready)&&(issue_queue->iq_entries[i].rd_ready)) {
+						issue_index[i] = i;
+						index_sum += 1;
+					}
+					break;
+
 				// check two src reg instructions
-				case STR: case LDR: case ADD: case SUB: case MUL: case DIV: case AND: case OR: case EXOR:
+				case LDR: case ADD: case SUB: case MUL: case DIV: case AND: case OR: case EXOR:
 					if ((issue_queue->iq_entries[i].rs1_ready)&&(issue_queue->iq_entries[i].rs2_ready)) {
+						issue_index[i] = i;
+						index_sum += 1;
+					}
+					break;
+
+				// check double src and desc reg instructions
+				case STR:
+					if ((issue_queue->iq_entries[i].rs1_ready)&&(issue_queue->iq_entries[i].rs2_ready)&&(issue_queue->iq_entries[i].rd_ready)) {
 						issue_index[i] = i;
 						index_sum += 1;
 					}
@@ -392,7 +416,7 @@ void print_ls_iq_content(APEX_LSQ* ls_queue, APEX_IQ* issue_queue) {
 							"\t%d\t|"
 							"\t%d\t|"
 							"\t%.5s\t|"
-							"\tR%02d-%d\t|"
+							"\tR%02d-%d-%d\t|"
 							"\tR%02d-%d-%d\t|"
 							"\tR%02d-%d-%d\t|"
 							"\t#%02d\t|"
@@ -401,7 +425,7 @@ void print_ls_iq_content(APEX_LSQ* ls_queue, APEX_IQ* issue_queue) {
 							issue_queue->iq_entries[i].status,
 							issue_queue->iq_entries[i].inst_type,
 							inst_type_str,
-							issue_queue->iq_entries[i].rd, issue_queue->iq_entries[i].rd_value,
+							issue_queue->iq_entries[i].rd, issue_queue->iq_entries[i].rd_value, issue_queue->iq_entries[i].rd_ready,
 							issue_queue->iq_entries[i].rs1, issue_queue->iq_entries[i].rs1_value, issue_queue->iq_entries[i].rs1_ready,
 							issue_queue->iq_entries[i].rs2, issue_queue->iq_entries[i].rs2_value, issue_queue->iq_entries[i].rs2_ready,
 							issue_queue->iq_entries[i].literal,
