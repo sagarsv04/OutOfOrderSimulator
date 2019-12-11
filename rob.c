@@ -91,7 +91,7 @@ int add_reorder_buffer_entry(APEX_ROB* rob, ROB_Entry rob_entry) {
 		rob->rob_entry[rob->issue_ptr].inst_type = rob_entry.inst_type;
 		rob->rob_entry[rob->issue_ptr].inst_ptr = rob_entry.pc;
 		rob->rob_entry[rob->issue_ptr].rd = rob_entry.rd;
-		rob->rob_entry[rob->issue_ptr].rd_value = -9999;
+		rob->rob_entry[rob->issue_ptr].rd_value = -1;
 		rob->rob_entry[rob->issue_ptr].exception = 0;
 		rob->rob_entry[rob->issue_ptr].valid = 0;
 		// increment buffer_length and issue_ptr
@@ -154,21 +154,21 @@ int commit_reorder_buffer_entry(APEX_ROB* rob, ROB_Entry* rob_entry) {
 		rob_entry->rd = rob->rob_entry[rob->commit_ptr].rd;
 		rob_entry->rd_value = rob->rob_entry[rob->commit_ptr].rd_value;
 		rob_entry->rd_valid = rob->rob_entry[rob->commit_ptr].valid;
-		rob_entry->rs1 = -9999;
-		rob_entry->rs1_value = -9999;
+		rob_entry->rs1 = INVALID;
+		rob_entry->rs1_value = INVALID;
 		rob_entry->rs1_valid = INVALID;
-		rob_entry->rs2 = -9999;
-		rob_entry->rs2_value = -9999;
+		rob_entry->rs2 = INVALID;
+		rob_entry->rs2_value = INVALID;
 		rob_entry->rs2_valid = INVALID;
-		rob_entry->buffer = -9999;
+		rob_entry->buffer = INVALID;
 		rob_entry->stage_cycle = INVALID;
 
 		// free the rob entry
 		rob->rob_entry[rob->commit_ptr].status = INVALID;
-		rob->rob_entry[rob->commit_ptr].inst_type = -9999;
-		rob->rob_entry[rob->commit_ptr].inst_ptr = -9999;
-		rob->rob_entry[rob->commit_ptr].rd = -9999;
-		rob->rob_entry[rob->commit_ptr].rd_value = -9999;
+		rob->rob_entry[rob->commit_ptr].inst_type = INVALID;
+		rob->rob_entry[rob->commit_ptr].inst_ptr = -1;
+		rob->rob_entry[rob->commit_ptr].rd = INVALID;
+		rob->rob_entry[rob->commit_ptr].rd_value = INVALID;
 		rob->rob_entry[rob->commit_ptr].exception = 0;
 		rob->rob_entry[rob->commit_ptr].valid = INVALID;
 		// decrement buffer_length and increment commit_ptr
@@ -310,7 +310,7 @@ void print_rob_and_rename_content(APEX_ROB* rob, APEX_RENAME* rename_table) {
 							"\t%d\t|"
 							"\t%d\t|"
 							"\t%.5s\t|"
-							"\tR%02d-%05d\t|"
+							"\tR%02d-%d\t|"
 							"\t%d\t|"
 							"\t%d\n",
 		 					i,

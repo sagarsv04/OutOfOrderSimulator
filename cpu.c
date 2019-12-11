@@ -1052,58 +1052,54 @@ int mem_stage(APEX_CPU* cpu) {
 	stage->executed = 0;
 	if ((!stage->stalled)&&(!stage->empty)) {
 		/* Read data from register file for store */
-		switch(stage->inst_type) {
+		if (stage->stage_cycle >= 3) {
 
-			case STORE: case STR:  // ************************************* STORE or STR ************************************* //
+			switch(stage->inst_type) {
+
+				case STORE: case STR:  // ************************************* STORE or STR ************************************* //
 				// use memory address and write value in data_memory
 				if (stage->mem_address > DATA_MEMORY_SIZE) {
 					// Segmentation fault
 					fprintf(stderr, "Segmentation fault for writing memory location :: %d\n", stage->mem_address);
 				}
 				else {
-					if (stage->stage_cycle == 3) {
-						// wait for 3 cycles
-						if (stage->rd_valid = VALID) {
-							cpu->data_memory[stage->mem_address] = stage->rd_value;
-						}
+					// wait for 3 cycles
+					if (stage->rd_valid = VALID) {
+						cpu->data_memory[stage->mem_address] = stage->rd_value;
+						stage->executed = 1;
 					}
 					else {
-						stage->stage_cycle += 1;
+						stage->executed = 0;
 					}
 				}
 				break;
 
-			case LOAD: case LDR:  // ************************************* LOAD or LDR ************************************* //
+				case LOAD: case LDR:  // ************************************* LOAD or LDR ************************************* //
 				// use memory address and write value in desc reg
 				if (stage->mem_address > DATA_MEMORY_SIZE) {
 					// Segmentation fault
 					fprintf(stderr, "Segmentation fault for accessing memory location :: %d\n", stage->mem_address);
 				}
 				else {
-					if (stage->stage_cycle == 3) {
-						// wait for 3 cycles
-						stage->rd_value = cpu->data_memory[stage->mem_address];
-						stage->rd_valid = VALID;
-					}
-					else {
-						stage->stage_cycle += 1;
-						stage->rd_valid = INVALID;
-					}
+					// wait for 3 cycles
+					stage->rd_value = cpu->data_memory[stage->mem_address];
+					stage->rd_valid = VALID;
+					stage->executed = 1;
 				}
 				break;
 
-			default:
+				default:
 				break;
+			}
 		}
-
-		if (stage->stage_cycle == 3) {
-			// execution of this stage is only completed after 3 cycles
-			stage->executed = 1;
+		else {
+			stage->stage_cycle += 1;
 		}
 	}
 
 	if (ENABLE_DEBUG_MESSAGES) {
 		print_stage_content("Mem FU", stage);
+		printf("Mem FU Cycle :: %d\n",stage->stage_cycle);
 	}
 
 	return 0;
@@ -1395,6 +1391,19 @@ int issue_instruction(APEX_CPU* cpu, APEX_IQ* issue_queue, APEX_LSQ* ls_queue) {
 						stage->lsq_index = issue_queue->iq_entries[issue_index[i]].lsq_index;
 						// remove the entry from issue_queue or mark it as invalid
 						issue_queue->iq_entries[issue_index[i]].status = INVALID;
+						issue_queue->iq_entries[issue_index[i]].inst_type = INVALID;
+						issue_queue->iq_entries[issue_index[i]].inst_ptr = -1;
+						issue_queue->iq_entries[issue_index[i]].rd = INVALID;
+						issue_queue->iq_entries[issue_index[i]].rd_value = INVALID;
+						issue_queue->iq_entries[issue_index[i]].rd_ready = INVALID;
+						issue_queue->iq_entries[issue_index[i]].rs1 = INVALID;
+						issue_queue->iq_entries[issue_index[i]].rs1_value = INVALID;
+						issue_queue->iq_entries[issue_index[i]].rs1_ready = INVALID;
+						issue_queue->iq_entries[issue_index[i]].rs2 = INVALID;
+						issue_queue->iq_entries[issue_index[i]].rs2_value = INVALID;
+						issue_queue->iq_entries[issue_index[i]].rs2_ready = INVALID;
+						issue_queue->iq_entries[issue_index[i]].literal = INVALID;
+						issue_queue->iq_entries[issue_index[i]].lsq_index = INVALID;
 						issue_queue->iq_entries[issue_index[i]].stage_cycle = INVALID;
 					}
 				}
@@ -1435,8 +1444,20 @@ int issue_instruction(APEX_CPU* cpu, APEX_IQ* issue_queue, APEX_LSQ* ls_queue) {
 			stage->rs2_valid = VALID;
 			stage->buffer = ls_queue->lsq_entries[lsq_index].literal;
 			stage->mem_address = ls_queue->lsq_entries[lsq_index].mem_address;
+
 			// remove the entry from issue_queue or mark it as invalid
 			ls_queue->lsq_entries[lsq_index].status = INVALID;
+			ls_queue->lsq_entries[lsq_index].load_store = INVALID;
+			ls_queue->lsq_entries[lsq_index].inst_ptr = -1;
+			ls_queue->lsq_entries[lsq_index].mem_valid = INVALID;
+			ls_queue->lsq_entries[lsq_index].rd = INVALID;
+			ls_queue->lsq_entries[lsq_index].rd_value = INVALID;
+			ls_queue->lsq_entries[lsq_index].data_ready = INVALID;
+			ls_queue->lsq_entries[lsq_index].literal = INVALID;
+			ls_queue->lsq_entries[lsq_index].rs1 = INVALID;
+			ls_queue->lsq_entries[lsq_index].rs1_value = INVALID;
+			ls_queue->lsq_entries[lsq_index].rs2 = INVALID;
+			ls_queue->lsq_entries[lsq_index].rs2_value = INVALID;
 			ls_queue->lsq_entries[lsq_index].stage_cycle = INVALID;
 		}
 		else {
@@ -1553,7 +1574,7 @@ int APEX_cpu_run(APEX_CPU* cpu, int num_cycle, APEX_LSQ* ls_queue, APEX_IQ* issu
 			break;
 		}
 		else {
-    			cpu->clock++; // places here so we can see prints aligned with executions
+		    cpu->clock++; // places here so we can see prints aligned with executions
 
 			if (ENABLE_DEBUG_MESSAGES) {
 				printf("\n--------------------------------\n");

@@ -88,15 +88,16 @@ void get_inst_name(int inst_type, char* inst_type_str) {
 
 void clear_stage_entry(APEX_CPU* cpu, int stage_index){
 	// this is to clear any previous entries in stage and avoid conflicts between diff instructions
-	cpu->stage[stage_index].rd = -9999;
-	cpu->stage[stage_index].rd_valid = 0;;
-	cpu->stage[stage_index].rs1 = -9999;
+	cpu->stage[stage_index].rd = INVALID;
+	cpu->stage[stage_index].rd_valid = INVALID;;
+	cpu->stage[stage_index].rs1 = INVALID;
 	cpu->stage[stage_index].rs1_valid = 0;
-	cpu->stage[stage_index].rs2 = -9999;
+	cpu->stage[stage_index].rs2 = INVALID;
 	cpu->stage[stage_index].rs2_valid = 0;
-	cpu->stage[stage_index].inst_type = -9999;
-	cpu->stage[stage_index].pc = 0;
+	cpu->stage[stage_index].inst_type = INVALID;
+	cpu->stage[stage_index].pc = -1;
 	cpu->stage[stage_index].empty = 1;
+	cpu->stage[stage_index].stage_cycle = INVALID;
 	strcpy(cpu->stage[stage_index].opcode, "");
 }
 
@@ -122,6 +123,12 @@ void push_func_unit_stages(APEX_CPU* cpu, int after_iq){
 		cpu->stage[INT_TWO] = cpu->stage[INT_ONE];
 		// and empty the MUL_ONE stage
 		clear_stage_entry(cpu, INT_ONE);
+
+		if ((cpu->stage[MEM].executed)&&(cpu->stage[MEM].stage_cycle>=3)) {
+			// and empty the MEM stage
+			clear_stage_entry(cpu, MEM);
+		}
+
 	}
 	else {
 		if (!cpu->stage[F].stalled) {

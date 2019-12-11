@@ -266,6 +266,7 @@ int add_ls_queue_entry(APEX_LSQ* ls_queue, LS_IQ_Entry ls_iq_entry, int* lsq_ind
 		*lsq_index = add_position;
 		ls_queue->lsq_entries[add_position].status = VALID;
 		ls_queue->lsq_entries[add_position].load_store = ls_iq_entry.inst_type;
+		ls_queue->lsq_entries[add_position].inst_ptr = ls_iq_entry.pc;
 		ls_queue->lsq_entries[add_position].rd = ls_iq_entry.rd;
 		ls_queue->lsq_entries[add_position].rd_value = ls_iq_entry.rd_value;
 		ls_queue->lsq_entries[add_position].rs1 = ls_iq_entry.rs1;
@@ -391,9 +392,9 @@ void print_ls_iq_content(APEX_LSQ* ls_queue, APEX_IQ* issue_queue) {
 							"\t%d\t|"
 							"\t%d\t|"
 							"\t%.5s\t|"
-							"\tR%02d-%05d\t|"
-							"\tR%02d-%05d-%d\t|"
-							"\tR%02d-%05d-%d\t|"
+							"\tR%02d-%d\t|"
+							"\tR%02d-%d-%d\t|"
+							"\tR%02d-%d-%d\t|"
 							"\t#%02d\t|"
 							"\t%02d\n",
 							i,
@@ -426,9 +427,9 @@ void print_ls_iq_content(APEX_LSQ* ls_queue, APEX_IQ* issue_queue) {
 							"\t%.5s\t|"
 							"\t%d\t|"
 							"\t%d\t|"
-							"\tR%02d-%05d\t|"
-							"\tR%02d-%05d\t|"
-							"\tR%02d-%05d\t|"
+							"\tR%02d-%d\t|"
+							"\tR%02d-%d\t|"
+							"\tR%02d-%d\t|"
 							"\t#%02d\n",
 							i,
 							ls_queue->lsq_entries[i].status,
