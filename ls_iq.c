@@ -85,6 +85,8 @@ int add_issue_queue_entry(APEX_IQ* issue_queue, LS_IQ_Entry ls_iq_entry, int* ls
 			issue_queue->iq_entries[add_position].inst_type = ls_iq_entry.inst_type;
 			issue_queue->iq_entries[add_position].inst_ptr = ls_iq_entry.pc;
 			issue_queue->iq_entries[add_position].rd = ls_iq_entry.rd;
+			issue_queue->iq_entries[add_position].rd_value = ls_iq_entry.rd_value;
+			issue_queue->iq_entries[add_position].rd_ready = ls_iq_entry.rd_valid;
 			issue_queue->iq_entries[add_position].rs1 = ls_iq_entry.rs1;
 			issue_queue->iq_entries[add_position].rs1_value = ls_iq_entry.rs1_value;
 			issue_queue->iq_entries[add_position].rs1_ready = ls_iq_entry.rs1_valid;
@@ -108,8 +110,8 @@ int update_issue_queue_entry(APEX_IQ* issue_queue, LS_IQ_Entry ls_iq_entry) {
 	int rs1_pos_sum = 0;
 	int rs2_pos_sum = 0;
 	if (!ls_iq_entry.executed) {
-    return FAILURE;
-  }
+		return FAILURE;
+	}
 	else {
 		// for now loop through entire issue_queue and check
 		for (int i=0; i<IQ_SIZE; i++) {
@@ -145,6 +147,7 @@ int get_issue_queue_index_to_issue(APEX_IQ* issue_queue, int* issue_index) {
 	// in cpu loop through index and issue instructions to respective func units
 	// int issue_index[IQ_SIZE] = {-1}; // these can use to see where values got updated
 	int index_sum = 0;
+	int stage_cycle_array[IQ_SIZE] = {[0 ... IQ_SIZE-1] = -1};
 	for (int i=0; i<IQ_SIZE; i++) {
 		// check only alloted entries
 		if (issue_queue->iq_entries[i].status == VALID) {
@@ -178,19 +181,30 @@ int get_issue_queue_index_to_issue(APEX_IQ* issue_queue, int* issue_index) {
 				default:
 					break;
 			}
-			// }
-			// else {
-			// 	issue_queue->iq_entries[i].stage_cycle += 1;
-			// }
-		}
-		else {
 			// even if inst is invalid inc stage cycle to know how long inst has been in IQ
 			issue_queue->iq_entries[i].stage_cycle += 1;
+			stage_cycle_array[i] = issue_queue->iq_entries[i].stage_cycle;
 		}
 	}
 	if (index_sum == 0) {
 		return FAILURE;
 	}
+	else {
+		int i,j,temp;
+		for(i=0; i<IQ_SIZE; i++)
+		{
+			for(j=i+1; j<IQ_SIZE; j++)
+			{
+				if(stage_cycle_array[i] < stage_cycle_array[j])
+				{
+					temp = issue_index[i];
+					issue_index[i] = issue_index[j];
+					issue_index[j] = temp;
+				}
+			}
+		}
+	}
+
 	return SUCCESS;
 }
 
@@ -260,11 +274,100 @@ int add_ls_queue_entry(APEX_LSQ* ls_queue, LS_IQ_Entry ls_iq_entry, int* lsq_ind
 		ls_queue->lsq_entries[add_position].rs2_value = ls_iq_entry.rs2_value;
 		ls_queue->lsq_entries[add_position].literal = ls_iq_entry.buffer;
 		ls_queue->lsq_entries[add_position].mem_valid = INVALID;
-		ls_queue->lsq_entries[add_position].data_ready = INVALID;
+		if ((ls_iq_entry.inst_type==STORE)||(ls_iq_entry.inst_type==STR)) {
+			ls_queue->lsq_entries[add_position].data_ready = ls_iq_entry.rd_valid;
+		}
+		else {
+			ls_queue->lsq_entries[add_position].data_ready = INVALID;
+		}
 		ls_queue->lsq_entries[add_position].stage_cycle = INVALID;
 	}
 	return SUCCESS;
 }
+
+
+int update_ls_queue_entry_mem_address(APEX_LSQ* ls_queue, LS_IQ_Entry ls_iq_entry) {
+
+	if (ls_iq_entry.lsq_index<0) {
+		return FAILURE;
+	}
+	else {
+		ls_queue->lsq_entries[ls_iq_entry.lsq_index].mem_address = ls_iq_entry.mem_address;
+		ls_queue->lsq_entries[ls_iq_entry.lsq_index].mem_valid = VALID;
+		if ((ls_queue->lsq_entries[ls_iq_entry.lsq_index].load_store==LOAD)||(ls_queue->lsq_entries[ls_iq_entry.lsq_index].load_store==LDR)) {
+			ls_queue->lsq_entries[ls_iq_entry.lsq_index].data_ready = VALID;
+		}
+	}
+
+	return SUCCESS;
+}
+
+
+int update_ls_queue_entry_reg(APEX_LSQ* ls_queue, LS_IQ_Entry ls_iq_entry) {
+
+	int update_pos = -1;
+
+	for (int i=0; i<LSQ_SIZE; i++) {
+		if (ls_queue->lsq_entries[i].status == VALID) {
+			if ((ls_queue->lsq_entries[i].load_store==STORE)||(ls_queue->lsq_entries[i].load_store==STR)) {
+				if (ls_queue->lsq_entries[i].data_ready==INVALID) {
+					if (ls_queue->lsq_entries[i].rd==ls_iq_entry.rd) {
+						ls_queue->lsq_entries[i].rd_value = ls_iq_entry.rd_value;
+						ls_queue->lsq_entries[i].data_ready = VALID;
+						update_pos = i;
+					}
+				}
+			}
+		}
+	}
+
+	if (update_pos<0) {
+		return FAILURE;
+	}
+	return SUCCESS;
+}
+
+
+int get_ls_queue_index_to_issue(APEX_LSQ* ls_queue, int* lsq_index) {
+
+	int index = -1;
+	int prev_index = -1;
+	int cycle = 0;
+	int prev_cycle = 0;
+
+	for (int i=0; i<LSQ_SIZE; i++) {
+
+		if (ls_queue->lsq_entries[i].status == VALID) {
+			if ((ls_queue->lsq_entries[i].load_store==STORE)||(ls_queue->lsq_entries[i].load_store==STR)) {
+				if ((ls_queue->lsq_entries[i].mem_valid)&&(ls_queue->lsq_entries[i].data_ready)) {
+					index = i;
+					cycle = ls_queue->lsq_entries[i].stage_cycle;
+				}
+			}
+			else {
+				if (ls_queue->lsq_entries[i].mem_valid) {
+					index = i;
+					cycle = ls_queue->lsq_entries[i].stage_cycle;
+				}
+			}
+
+		if (cycle > prev_cycle) {
+			prev_cycle = cycle;
+			prev_index = index;
+		}
+		ls_queue->lsq_entries[i].stage_cycle += 1;
+		}
+	}
+
+	if (prev_index<0) {
+		return FAILURE;
+	}
+	else {
+		*lsq_index = prev_index;
+	}
+	return SUCCESS;
+}
+
 
 
 void print_ls_iq_content(APEX_LSQ* ls_queue, APEX_IQ* issue_queue) {
@@ -327,7 +430,7 @@ void print_ls_iq_content(APEX_LSQ* ls_queue, APEX_IQ* issue_queue) {
 							"\tR%02d-%05d\t|"
 							"\tR%02d-%05d\t|"
 							"\t#%02d\n",
-	 						i,
+							i,
 							ls_queue->lsq_entries[i].status,
 							ls_queue->lsq_entries[i].load_store,
 							inst_type_str,

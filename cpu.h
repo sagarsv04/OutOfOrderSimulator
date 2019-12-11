@@ -19,7 +19,7 @@
 #define DATA_MEMORY_SIZE 4096
 #define REGISTER_FILE_SIZE 32
 
-#define CPU_OUT_STAGES 2
+#define CPU_OUT_STAGES 3
 
 /* Set this flag to 1 to enable debug messages */
 #define ENABLE_DEBUG_MESSAGES 1
@@ -180,7 +180,7 @@ int decode(APEX_CPU* cpu, APEX_RENAME* rename_table);
 
 int dispatch_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APEX_ROB* rob, APEX_RENAME* rename_table);
 
-int issue_instruction(APEX_CPU* cpu, APEX_IQ* issue_queue);
+int issue_instruction(APEX_CPU* cpu, APEX_IQ* issue_queue, APEX_LSQ* ls_queue);
 
 int execute_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APEX_ROB* rob, APEX_RENAME* rename_table); // cpu execute will hav diff FU calls
 

@@ -54,7 +54,8 @@ typedef struct APEX_ROB {
 
 typedef struct APEX_RENAME {
 	APEX_RENAME_TABLE reg_rename[RENAME_TABLE_SIZE];
-	APEX_ARF_TABLE arf_rename[RENAME_TABLE_SIZE];
+	APEX_ARF_TABLE rat_rename[RENAME_TABLE_SIZE];
+	int last_rename_pos;
 } APEX_RENAME;
 
 

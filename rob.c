@@ -42,7 +42,8 @@ APEX_RENAME* init_rename_table() {
 	}
 
 	memset(rename_table->reg_rename, 0, sizeof(APEX_RENAME_TABLE)*RENAME_TABLE_SIZE);  // all rename table entry set to 0
-	memset(rename_table->arf_rename, 0, sizeof(APEX_ARF_TABLE)*RENAME_TABLE_SIZE);  // all rename table entry set to 0
+	memset(rename_table->rat_rename, 0, sizeof(APEX_ARF_TABLE)*RENAME_TABLE_SIZE);  // all rename table entry set to 0
+	rename_table->last_rename_pos = 0;
 
 	return rename_table;
 }
@@ -181,8 +182,13 @@ int commit_reorder_buffer_entry(APEX_ROB* rob, ROB_Entry* rob_entry) {
 int can_rename_reg_tag(APEX_RENAME* rename_table) {
 
 	int rename_position = -1;
+	int search_start = 0;
 
-	for (int i=0; i<RENAME_TABLE_SIZE; i++) {
+	if (rename_table->last_rename_pos<(RENAME_TABLE_SIZE-1)) {
+		search_start = rename_table->last_rename_pos;
+	}
+
+	for (int i=search_start; i<RENAME_TABLE_SIZE; i++) {
 		if (rename_table->reg_rename[i].tag_valid==INVALID) {
 			rename_position = i;
 			break;
@@ -258,8 +264,13 @@ int get_phy_reg_renamed_tag(int phy_reg, APEX_RENAME* rename_table) {
 int rename_desc_reg(int* desc_reg, APEX_RENAME* rename_table) {
 	// this actually renames the regs
 	int rename_position = -1;
+	int search_start = 0;
 
-	for (int i=0; i<RENAME_TABLE_SIZE; i++) {
+	if (rename_table->last_rename_pos<(RENAME_TABLE_SIZE-1)) {
+		search_start = rename_table->last_rename_pos;
+	}
+
+	for (int i=search_start; i<RENAME_TABLE_SIZE; i++) {
 		if (rename_table->reg_rename[i].tag_valid==INVALID) {
 			rename_position = i;
 			break;
@@ -272,6 +283,7 @@ int rename_desc_reg(int* desc_reg, APEX_RENAME* rename_table) {
 		rename_table->reg_rename[rename_position].rename_tag = *desc_reg;
 		*desc_reg = rename_position;
 		rename_table->reg_rename[rename_position].tag_valid = VALID;
+		rename_table->last_rename_pos = rename_position;
 	}
 
 	return SUCCESS;

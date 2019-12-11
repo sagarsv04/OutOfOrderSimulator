@@ -292,6 +292,9 @@ int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 						printf("Failed to get renamed tag for R%d\n", stage->rs1);
 					}
 				}
+				else {
+					; // get it from arch reg if valid and dont rename
+				}
 				// check if src regs are renamed
 				if (check_if_reg_renamed(stage->rs2, rename_table)==SUCCESS) {
 					// get the src reg renamed tag
@@ -1011,6 +1014,21 @@ int branch_stage(APEX_CPU* cpu) {
 		    }
 				break;
 
+			case JUMP:  // ************************************* BNZ ************************************* //
+				// load buffer value to mem_address
+		  	stage->mem_address = stage->buffer;
+				if (!((stage->pc + stage->mem_address) < 4000)) {
+		      // cpu->pc = stage->pc + stage->mem_address;	// should i change pc value when rob commits Branch Inst
+		      // un stall Fetch and Decode stage if they are stalled
+		      // cpu->stage[DRF].stalled = 0;
+		      // cpu->stage[F].stalled = 0;
+		      // cpu->flags[ZF] = 0;
+		    }
+				else {
+		      fprintf(stderr, "Instruction %s Invalid Relative Address %d\n", stage->opcode, cpu->pc + stage->mem_address);
+		    }
+				break;
+
 			default:
 				break;
 		}
@@ -1045,12 +1063,12 @@ int mem_stage(APEX_CPU* cpu) {
 				else {
 					if (stage->stage_cycle == 3) {
 						// wait for 3 cycles
-						cpu->data_memory[stage->mem_address] = stage->rd_value;
-						stage->rd_valid = VALID;
+						if (stage->rd_valid = VALID) {
+							cpu->data_memory[stage->mem_address] = stage->rd_value;
+						}
 					}
 					else {
 						stage->stage_cycle += 1;
-						stage->rd_valid = INVALID;
 					}
 				}
 				break;
@@ -1100,15 +1118,46 @@ int writeback_stage(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APE
 	// take MUL_THREE, INT_TWO Stage and update the ROB entry so in next cycle
 	// instruction can be commited
 
-	int cpu_stages[CPU_OUT_STAGES] = {INT_TWO, MUL_THREE};
+	int cpu_stages[CPU_OUT_STAGES] = {INT_TWO, MUL_THREE, MEM};
 
 	for (int i=0; i<CPU_OUT_STAGES; i++) {
 
 		CPU_Stage* stage = &cpu->stage[cpu_stages[i]];
 
 		if ((stage->executed)&&(!stage->empty)) {
+
+			int ret = -1;
+
+			LS_IQ_Entry ls_iq_entry = {
+				.inst_type = stage->inst_type,
+				.executed = stage->executed,
+				.pc = stage->pc,
+				.rd = stage->rd,
+				.rd_value = stage->rd_value,
+				.rd_valid = stage->rd_valid,
+				.rs1 = stage->rs1,
+				.rs1_value = stage->rs1_value,
+				.rs1_valid = stage->rs1_valid,
+				.rs2 = stage->rs2,
+				.rs2_value = stage->rs2_value,
+				.rs2_valid = stage->rs2_valid,
+				.buffer = stage->buffer,
+				.mem_address = stage->mem_address,
+				.lsq_index = stage->lsq_index,
+				.stage_cycle = stage->stage_cycle};
+
+			if (cpu_stages[i]==INT_TWO) {
+				if ((stage->inst_type==STORE)||(stage->inst_type==STR)||(stage->inst_type==LOAD)||(stage->inst_type==LDR))	{
+					ret = update_ls_queue_entry_mem_address(ls_queue, ls_iq_entry);
+					if (ret!=SUCCESS) {
+						if (ENABLE_DEBUG_MESSAGES_L2) {
+							fprintf(stderr, "Failed to Update LSQ Entry (%d) for pc(%d):: %.5s\n", ret, stage->pc, stage->opcode);
+						}
+					}
+				}
+			}
+
 			if (stage->rd_valid) {
-				int ret = -1;
 				// int iq_src_regs_index[IQ_SIZE][IQ_SIZE] = {[0 ... (2*IQ_SIZE)-1] = -1}
 				ROB_Entry rob_entry = {
 					.inst_type = stage->inst_type,
@@ -1127,32 +1176,28 @@ int writeback_stage(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APE
 					.stage_cycle = stage->stage_cycle};
 
 				ret = update_reorder_buffer_entry_data(rob, rob_entry);
-				if (ret!=SUCCESS) {
+				if (ret==ERROR) {
 					if (ENABLE_DEBUG_MESSAGES_L2) {
 						fprintf(stderr, "Failed to Update Rob Entry (%d) for pc(%d):: %.5s\n", ret, stage->pc, stage->opcode);
 					}
 				}
-
-				LS_IQ_Entry ls_iq_entry = {
-					.inst_type = stage->inst_type,
-					.executed = stage->executed,
-					.pc = stage->pc,
-					.rd = stage->rd,
-					.rd_value = stage->rd_value,
-					.rd_valid = stage->rd_valid,
-					.rs1 = stage->rs1,
-					.rs1_value = stage->rs1_value,
-					.rs1_valid = stage->rs1_valid,
-					.rs2 = stage->rs2,
-					.rs2_value = stage->rs2_value,
-					.rs2_valid = stage->rs2_valid,
-					.buffer = stage->buffer,
-					.stage_cycle = stage->stage_cycle};
+				if (ret==FAILURE) {
+					if (ENABLE_DEBUG_MESSAGES_L2) {
+						fprintf(stderr, "Nothing to Update in Rob Entry (%d) for pc(%d):: %.5s\n", ret, stage->pc, stage->opcode);
+					}
+				}
 
 				ret = update_issue_queue_entry(issue_queue, ls_iq_entry);
-				if (ret!=SUCCESS) {
+				if (ret==FAILURE) {
 					if (ENABLE_DEBUG_MESSAGES_L2) {
 						fprintf(stderr, "Failed to Update IQ Entry (%d) for pc(%d):: %.5s\n", ret, stage->pc, stage->opcode);
+					}
+				}
+
+				ret = update_ls_queue_entry_reg(ls_queue, ls_iq_entry);
+				if (ret==FAILURE) {
+					if (ENABLE_DEBUG_MESSAGES_L2) {
+						fprintf(stderr, "Nothing to Update in LSQ Entry (%d) for pc(%d):: %.5s\n", ret, stage->pc, stage->opcode);
 					}
 				}
 
@@ -1293,7 +1338,7 @@ int dispatch_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue
 }
 
 
-int issue_instruction(APEX_CPU* cpu, APEX_IQ* issue_queue){
+int issue_instruction(APEX_CPU* cpu, APEX_IQ* issue_queue, APEX_LSQ* ls_queue) {
 	// check if respective FU is free and All Regs Value are Valid then issue the instruction
 	// get issue_index of all the instruction
 	int ret = 0;
@@ -1334,7 +1379,12 @@ int issue_instruction(APEX_CPU* cpu, APEX_IQ* issue_queue){
 						stage->pc = issue_queue->iq_entries[issue_index[i]].inst_ptr;
 						stage->rd = issue_queue->iq_entries[issue_index[i]].rd;
 						stage->rd_value = issue_queue->iq_entries[issue_index[i]].rd_value;
-						stage->rd_valid = INVALID;
+						if ((stage->inst_type==STORE)||(stage->inst_type==STR)) {
+							stage->rd_valid = issue_queue->iq_entries[issue_index[i]].rd_ready;;
+						}
+						else {
+							stage->rd_valid = INVALID;
+						}
 						stage->rs1 = issue_queue->iq_entries[issue_index[i]].rs1;
 						stage->rs1_value = issue_queue->iq_entries[issue_index[i]].rs1_value;
 						stage->rs1_valid = issue_queue->iq_entries[issue_index[i]].rs1_ready;
@@ -1358,6 +1408,41 @@ int issue_instruction(APEX_CPU* cpu, APEX_IQ* issue_queue){
 	else {
 		if (ENABLE_DEBUG_MESSAGES_L2) {
 			fprintf(stderr, "No Inst to issue to Unit\n");
+		}
+	}
+
+	int lsq_index = -1;
+	ret = get_ls_queue_index_to_issue(ls_queue, &lsq_index);
+	if (ret==SUCCESS) {
+		char* inst_type_str = (char*) malloc(10);
+		CPU_Stage* stage = &cpu->stage[MEM];
+		if ((stage->executed)||(stage->empty)) {
+			strcpy(inst_type_str, "");
+			stage->executed = INVALID;
+			stage->empty = INVALID;
+			stage->inst_type = ls_queue->lsq_entries[lsq_index].load_store;
+			get_inst_name(stage->inst_type, inst_type_str);
+			strcpy(stage->opcode, inst_type_str);
+			stage->pc = ls_queue->lsq_entries[lsq_index].inst_ptr;
+			stage->rd = ls_queue->lsq_entries[lsq_index].rd;
+			stage->rd_value = ls_queue->lsq_entries[lsq_index].rd_value;
+			stage->rd_valid = ls_queue->lsq_entries[lsq_index].data_ready;
+			stage->rs1 = ls_queue->lsq_entries[lsq_index].rs1;
+			stage->rs1_value = ls_queue->lsq_entries[lsq_index].rs1_value;
+			stage->rs1_valid = VALID;
+			stage->rs2 = ls_queue->lsq_entries[lsq_index].rs2;
+			stage->rs2_value = ls_queue->lsq_entries[lsq_index].rs2_value;
+			stage->rs2_valid = VALID;
+			stage->buffer = ls_queue->lsq_entries[lsq_index].literal;
+			stage->mem_address = ls_queue->lsq_entries[lsq_index].mem_address;
+			// remove the entry from issue_queue or mark it as invalid
+			ls_queue->lsq_entries[lsq_index].status = INVALID;
+			ls_queue->lsq_entries[lsq_index].stage_cycle = INVALID;
+		}
+		else {
+			if (ENABLE_DEBUG_MESSAGES_L2) {
+				fprintf(stderr, "Cannot Issue Inst To Mem Stage\n");
+			}
 		}
 	}
 
@@ -1401,10 +1486,46 @@ int commit_instruction(APEX_CPU* cpu, APEX_ROB* rob, APEX_RENAME* rename_table) 
 			;// the phy reg is not tagged with arch rsgs
 		}
 		else {
-			// free the physical regs
-			cpu->regs[src_reg] = rob_entry->rd_value;
-			rename_table->reg_rename[rob_entry->rd].tag_valid = INVALID;
-			set_reg_status(cpu, src_reg, -1);
+			if ((rob_entry->inst_type==STORE)||(rob_entry->inst_type==STR)) {
+				// ; no need to free regs
+			}
+			else {
+				// free the physical regs
+				cpu->regs[src_reg] = rob_entry->rd_value;
+				rename_table->reg_rename[rob_entry->rd].tag_valid = INVALID;
+				set_reg_status(cpu, src_reg, -1);
+
+				switch (cpu->stage[DRF].inst_type) {
+					// check single src reg instructions
+					case STORE: case LOAD: case MOV: case ADDL: case SUBL: case JUMP:
+					if (!cpu->stage[DRF].rs1_valid) {
+						if (cpu->stage[DRF].rs1==rob_entry->rd) {
+							cpu->stage[DRF].rs1_value = rob_entry->rd_value;
+							cpu->stage[DRF].rs1_valid = rob_entry->rd_valid;
+						}
+					}
+					break;
+
+					// check two src reg instructions
+					case STR: case LDR: case ADD: case SUB: case MUL: case DIV: case AND: case OR: case EXOR:
+					if (!cpu->stage[DRF].rs1_valid) {
+						if (cpu->stage[DRF].rs1==rob_entry->rd) {
+							cpu->stage[DRF].rs1_value = rob_entry->rd_value;
+							cpu->stage[DRF].rs1_valid = rob_entry->rd_valid;
+						}
+					}
+					if (!cpu->stage[DRF].rs2_valid) {
+						if (cpu->stage[DRF].rs2==rob_entry->rd) {
+							cpu->stage[DRF].rs2_value = rob_entry->rd_value;
+							cpu->stage[DRF].rs2_valid = rob_entry->rd_valid;
+						}
+					}
+					break;
+					// confirm if for Store we need to read all three src reg
+					default:
+					break;
+				}
+			}
 		}
 	}
 	else {
@@ -1432,7 +1553,7 @@ int APEX_cpu_run(APEX_CPU* cpu, int num_cycle, APEX_LSQ* ls_queue, APEX_IQ* issu
 			break;
 		}
 		else {
-			cpu->clock++; // places here so we can see prints aligned with executions
+    			cpu->clock++; // places here so we can see prints aligned with executions
 
 			if (ENABLE_DEBUG_MESSAGES) {
 				printf("\n--------------------------------\n");
@@ -1445,7 +1566,7 @@ int APEX_cpu_run(APEX_CPU* cpu, int num_cycle, APEX_LSQ* ls_queue, APEX_IQ* issu
 			// commit inst
 			stage_ret = commit_instruction(cpu, rob, rename_table);
 			// adding inst to FU
-			stage_ret = issue_instruction(cpu, issue_queue);
+			stage_ret = issue_instruction(cpu, issue_queue, ls_queue);
 			// executing inst
 			stage_ret = execute_instruction(cpu, ls_queue, issue_queue, rob, rename_table);
 			// adding inst to IQ, LSQ, ROB

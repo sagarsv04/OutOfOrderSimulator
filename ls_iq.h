@@ -22,6 +22,7 @@ typedef struct IQ_FORMAT {
 	int inst_ptr;				// indicate pc value of instruction
 	int literal;				// hold literal value
 	int rd;							// holds desc reg tag
+	int rd_ready;			// indicate if src1 is ready
 	int rd_value;				// holds desc reg value
 	int rs1;						// holds src1 reg tag
 	int rs1_ready;			// indicate if src1 is ready
@@ -38,7 +39,9 @@ typedef struct IQ_FORMAT {
 typedef struct LSQ_FORMAT {
 	int status;					// indicate if entry is free or allocated
 	int load_store;			// indicate if entry is for load or store // use as inst_type
+	int inst_ptr;				// indicate pc value of instruction
 	int mem_valid;			// indicate if memory address is valid
+	int mem_address;
 	int rd;							// holds destination reg tag
 	int rd_value;				// holds src1 reg value
 	int data_ready;			// indicate if data is ready
@@ -75,6 +78,8 @@ typedef struct LS_IQ_Entry {
 	int rs2_value;
 	int rs2_valid;
 	int buffer;
+	int mem_address;
+	int lsq_index;
 	int stage_cycle;
 } LS_IQ_Entry;
 
@@ -93,6 +98,11 @@ void deinit_ls_queue(APEX_LSQ* ls_queue);
 
 int can_add_entry_in_ls_queue(APEX_LSQ* ls_queue);
 int add_ls_queue_entry(APEX_LSQ* ls_queue, LS_IQ_Entry ls_iq_entry, int* add_position);
+
+int update_ls_queue_entry_mem_address(APEX_LSQ* ls_queue, LS_IQ_Entry ls_iq_entry);
+int update_ls_queue_entry_reg(APEX_LSQ* ls_queue, LS_IQ_Entry ls_iq_entry);
+
+int get_ls_queue_index_to_issue(APEX_LSQ* ls_queue, int* lsq_index);
 
 void print_ls_iq_content(APEX_LSQ* ls_queue, APEX_IQ* issue_queue);
 
