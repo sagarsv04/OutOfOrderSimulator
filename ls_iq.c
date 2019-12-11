@@ -132,7 +132,7 @@ int update_issue_queue_entry(APEX_IQ* issue_queue, LS_IQ_Entry ls_iq_entry) {
 				// this for updating STORE STR Rd
 				if ((issue_queue->iq_entries[i].inst_type==STORE)||(issue_queue->iq_entries[i].inst_type==STR)) {
 					if ((ls_iq_entry.rd == issue_queue->iq_entries[i].rd)&&(issue_queue->iq_entries[i].rd_ready==INVALID)) {
-						issue_queue->iq_entries[i].rd = ls_iq_entry.rd_value;
+						issue_queue->iq_entries[i].rd_value = ls_iq_entry.rd_value;
 						issue_queue->iq_entries[i].rd_ready = VALID;
 						// rs2_position[i] = i;
 						update_pos_sum += 1;
@@ -317,10 +317,14 @@ int update_ls_queue_entry_mem_address(APEX_LSQ* ls_queue, LS_IQ_Entry ls_iq_entr
 		return FAILURE;
 	}
 	else {
-		ls_queue->lsq_entries[ls_iq_entry.lsq_index].mem_address = ls_iq_entry.mem_address;
-		ls_queue->lsq_entries[ls_iq_entry.lsq_index].mem_valid = VALID;
-		if ((ls_queue->lsq_entries[ls_iq_entry.lsq_index].load_store==LOAD)||(ls_queue->lsq_entries[ls_iq_entry.lsq_index].load_store==LDR)) {
-			ls_queue->lsq_entries[ls_iq_entry.lsq_index].data_ready = VALID;
+		// same inst data can be copied
+		if (ls_queue->lsq_entries[ls_iq_entry.lsq_index].inst_ptr = ls_iq_entry.pc) {
+			ls_queue->lsq_entries[ls_iq_entry.lsq_index].mem_address = ls_iq_entry.mem_address;
+			ls_queue->lsq_entries[ls_iq_entry.lsq_index].mem_valid = VALID;
+			if (ls_queue->lsq_entries[ls_iq_entry.lsq_index].rd==ls_iq_entry.rd) {
+				ls_queue->lsq_entries[ls_iq_entry.lsq_index].rd_value = ls_iq_entry.rd_value;
+				ls_queue->lsq_entries[ls_iq_entry.lsq_index].data_ready = VALID;
+			}
 		}
 	}
 

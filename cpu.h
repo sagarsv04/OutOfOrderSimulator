@@ -184,6 +184,6 @@ int issue_instruction(APEX_CPU* cpu, APEX_IQ* issue_queue, APEX_LSQ* ls_queue);
 
 int execute_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APEX_ROB* rob, APEX_RENAME* rename_table); // cpu execute will hav diff FU calls
 
-int commit_instruction(APEX_CPU* cpu, APEX_ROB* rob, APEX_RENAME* rename_table);
+int commit_instruction(APEX_CPU* cpu, APEX_IQ* issue_queue, APEX_ROB* rob, APEX_RENAME* rename_table);
 
 #endif
