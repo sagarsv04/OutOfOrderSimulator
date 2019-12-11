@@ -19,6 +19,8 @@
 #define DATA_MEMORY_SIZE 4096
 #define REGISTER_FILE_SIZE 32
 
+#define CPU_OUT_STAGES 2
+
 /* Set this flag to 1 to enable debug messages */
 #define ENABLE_DEBUG_MESSAGES 1
 #define ENABLE_DEBUG_MESSAGES_L2 1

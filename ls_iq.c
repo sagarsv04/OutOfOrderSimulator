@@ -118,13 +118,13 @@ int update_issue_queue_entry(APEX_IQ* issue_queue, LS_IQ_Entry ls_iq_entry) {
 				// first check rd ie flow and output dependencies
 				if (ls_iq_entry.rd == issue_queue->iq_entries[i].rs1) {
 					issue_queue->iq_entries[i].rs1_value = ls_iq_entry.rd_value;
-					issue_queue->iq_entries[i].rs1_ready = 1;
+					issue_queue->iq_entries[i].rs1_ready = VALID;
 					// rs1_position[i] = i;
 					rs1_pos_sum += 1;
 				}
 				if (ls_iq_entry.rd == issue_queue->iq_entries[i].rs2) {
 					issue_queue->iq_entries[i].rs2_value = ls_iq_entry.rd_value;
-					issue_queue->iq_entries[i].rs2_ready = 1;
+					issue_queue->iq_entries[i].rs2_ready = VALID;
 					// rs2_position[i] = i;
 					rs2_pos_sum += 1;
 				}
@@ -132,7 +132,9 @@ int update_issue_queue_entry(APEX_IQ* issue_queue, LS_IQ_Entry ls_iq_entry) {
 		}
 	}
 	if ((rs1_pos_sum == 0)&&(rs2_pos_sum == 0)) {
-		return FAILURE;
+		if (ENABLE_DEBUG_MESSAGES_L2) {
+			fprintf(stderr, "No Update in IQ for Inst %d at pc(%d)\n", ls_iq_entry.inst_type, ls_iq_entry.pc);
+		}
 	}
 	return SUCCESS;
 }

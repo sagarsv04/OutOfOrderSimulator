@@ -24,7 +24,7 @@ typedef struct APEX_Forward {
 void get_inst_name(int inst_type, char* inst_type_str);
 void clear_stage_entry(APEX_CPU* cpu, int stage_index);
 void add_bubble_to_stage(APEX_CPU* cpu, int stage_index);
-void push_func_unit_stages(APEX_CPU* cpu);
+void push_func_unit_stages(APEX_CPU* cpu, int after_iq);
 
 int get_reg_values(APEX_CPU* cpu, CPU_Stage* stage, int src_reg_pos, int src_reg);
 int get_reg_status(APEX_CPU* cpu, int reg_number);

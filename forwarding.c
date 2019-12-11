@@ -111,24 +111,27 @@ void add_bubble_to_stage(APEX_CPU* cpu, int stage_index) {
 }
 
 
-void push_func_unit_stages(APEX_CPU* cpu){
+void push_func_unit_stages(APEX_CPU* cpu, int after_iq){
 
-	cpu->stage[MUL_THREE] = cpu->stage[MUL_TWO];
-	cpu->stage[MUL_TWO] = cpu->stage[MUL_ONE];
-	// and empty the MUL_ONE stage
-	clear_stage_entry(cpu, MUL_ONE);
+	if (after_iq) {
+		cpu->stage[MUL_THREE] = cpu->stage[MUL_TWO];
+		cpu->stage[MUL_TWO] = cpu->stage[MUL_ONE];
+		// and empty the MUL_ONE stage
+		clear_stage_entry(cpu, MUL_ONE);
 
-	cpu->stage[INT_TWO] = cpu->stage[INT_ONE];
-	// and empty the MUL_ONE stage
-	clear_stage_entry(cpu, INT_ONE);
-
-	if (!cpu->stage[F].stalled) {
-		clear_stage_entry(cpu, DRF);
-		cpu->stage[DRF] = cpu->stage[F];
-		cpu->stage[DRF].executed = 0;
+		cpu->stage[INT_TWO] = cpu->stage[INT_ONE];
+		// and empty the MUL_ONE stage
+		clear_stage_entry(cpu, INT_ONE);
 	}
 	else {
-		add_bubble_to_stage(cpu, DRF);
+		if (!cpu->stage[F].stalled) {
+			clear_stage_entry(cpu, DRF);
+			cpu->stage[DRF] = cpu->stage[F];
+			cpu->stage[DRF].executed = 0;
+		}
+		else {
+			add_bubble_to_stage(cpu, DRF);
+		}
 	}
 }
 

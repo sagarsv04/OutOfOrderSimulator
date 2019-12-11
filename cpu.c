@@ -256,9 +256,8 @@ int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 	CPU_Stage* stage = &cpu->stage[DRF];
 	stage->executed = 0;
 	int ret = -1;
-	// decode stage only has power to stall itself and Fetch stage
-	APEX_Forward forwarding = get_cpu_forwarding_status(cpu, stage);
-	if ((!stage->stalled)||(forwarding.unstall)) {
+	// decode should stall if IQ is full
+	if (!stage->stalled) {
 		/* Read data from register file for store */
 		switch(stage->inst_type) {
 
@@ -680,9 +679,6 @@ int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 				break;
 		}
 
-		// decode should stall if IQ is full
-		// and unstall if entry is available
-		// use diff func to handle this case
 		stage->executed = 1;
 	}
 
@@ -1104,75 +1100,97 @@ int writeback_stage(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APE
 	// take MUL_THREE, INT_TWO Stage and update the ROB entry so in next cycle
 	// instruction can be commited
 
-	// ************************************* INT_TWO ************************************* //
+	int cpu_stages[CPU_OUT_STAGES] = {INT_TWO, MUL_THREE};
 
-	CPU_Stage* stage = &cpu->stage[INT_TWO];
+	for (int i=0; i<CPU_OUT_STAGES; i++) {
 
-	if ((stage->executed)&&(!stage->empty)) {
-		if (stage->rd_valid) {
-			int ret = -1;
-			ROB_Entry rob_entry = {
-				.inst_type = stage->inst_type,
-				.executed = stage->executed,
-				.pc = stage->pc,
-				.rd = stage->rd,
-				.rd_value = stage->rd_value,
-				.rd_valid = stage->rd_valid,
-				.rs1 = stage->rs1,
-				.rs1_value = stage->rs1_value,
-				.rs1_valid = stage->rs1_valid,
-				.rs2 = stage->rs2,
-				.rs2_value = stage->rs2_value,
-				.rs2_valid = stage->rs2_valid,
-				.buffer = stage->buffer,
-				.stage_cycle = stage->stage_cycle};
+		CPU_Stage* stage = &cpu->stage[cpu_stages[i]];
 
-			ret = update_reorder_buffer_entry_data(rob, rob_entry);
-			if (ret!=SUCCESS) {
+		if ((stage->executed)&&(!stage->empty)) {
+			if (stage->rd_valid) {
+				int ret = -1;
+				// int iq_src_regs_index[IQ_SIZE][IQ_SIZE] = {[0 ... (2*IQ_SIZE)-1] = -1}
+				ROB_Entry rob_entry = {
+					.inst_type = stage->inst_type,
+					.executed = stage->executed,
+					.pc = stage->pc,
+					.rd = stage->rd,
+					.rd_value = stage->rd_value,
+					.rd_valid = stage->rd_valid,
+					.rs1 = stage->rs1,
+					.rs1_value = stage->rs1_value,
+					.rs1_valid = stage->rs1_valid,
+					.rs2 = stage->rs2,
+					.rs2_value = stage->rs2_value,
+					.rs2_valid = stage->rs2_valid,
+					.buffer = stage->buffer,
+					.stage_cycle = stage->stage_cycle};
+
+				ret = update_reorder_buffer_entry_data(rob, rob_entry);
+				if (ret!=SUCCESS) {
+					if (ENABLE_DEBUG_MESSAGES_L2) {
+						fprintf(stderr, "Failed to Update Rob Entry (%d) for pc(%d):: %.5s\n", ret, stage->pc, stage->opcode);
+					}
+				}
+
+				LS_IQ_Entry ls_iq_entry = {
+					.inst_type = stage->inst_type,
+					.executed = stage->executed,
+					.pc = stage->pc,
+					.rd = stage->rd,
+					.rd_value = stage->rd_value,
+					.rd_valid = stage->rd_valid,
+					.rs1 = stage->rs1,
+					.rs1_value = stage->rs1_value,
+					.rs1_valid = stage->rs1_valid,
+					.rs2 = stage->rs2,
+					.rs2_value = stage->rs2_value,
+					.rs2_valid = stage->rs2_valid,
+					.buffer = stage->buffer,
+					.stage_cycle = stage->stage_cycle};
+
+				ret = update_issue_queue_entry(issue_queue, ls_iq_entry);
+				if (ret!=SUCCESS) {
+					if (ENABLE_DEBUG_MESSAGES_L2) {
+						fprintf(stderr, "Failed to Update IQ Entry (%d) for pc(%d):: %.5s\n", ret, stage->pc, stage->opcode);
+					}
+				}
+
+				// Also update DRF regs so next they can be dispatched
+
+				switch (cpu->stage[DRF].inst_type) {
+
+					// check single src reg instructions
+					case STORE: case LOAD: case MOV: case ADDL: case SUBL: case JUMP:
+						if (cpu->stage[DRF].rs1==stage->rd) {
+							cpu->stage[DRF].rs1_value = stage->rd_value;
+							cpu->stage[DRF].rs1_valid = stage->rd_valid;
+						}
+						break;
+
+					// check two src reg instructions
+					case STR: case LDR: case ADD: case SUB: case MUL: case DIV: case AND: case OR: case EXOR:
+						if (cpu->stage[DRF].rs1==stage->rd) {
+							cpu->stage[DRF].rs1_value = stage->rd_value;
+							cpu->stage[DRF].rs1_valid = stage->rd_valid;
+						}
+						if (cpu->stage[DRF].rs2==stage->rd) {
+							cpu->stage[DRF].rs2_value = stage->rd_value;
+							cpu->stage[DRF].rs2_valid = stage->rd_valid;
+						}
+						break;
+					// confirm if for Store we need to read all three src reg
+					default:
+						break;
+				}
+			}
+			else {
 				if (ENABLE_DEBUG_MESSAGES_L2) {
-					fprintf(stderr, "Failed to Update Rob Entry (%d) for pc(%d):: %.5s\n", ret, stage->pc, stage->opcode);
+					fprintf(stderr, "INT Two Stage Value not Ready for Phy Reg R%d for pc(%d):: %.5s\n", stage->rd, stage->pc, stage->opcode);
 				}
 			}
 		}
-		else {
-			if (ENABLE_DEBUG_MESSAGES_L2) {
-				fprintf(stderr, "INT Two Stage Value not Ready for Phy Reg R%d for pc(%d):: %.5s\n", stage->rd, stage->pc, stage->opcode);
-			}
-		}
 	}
-
-	// ************************************* MUL_THREE ************************************* //
-
-	// CPU_Stage* stage = &cpu->stage[MUL_THREE];
-	//
-	// if ((stage->executed)&&(!stage->empty)) {
-	// 	int ret = -1;
-	// 	if (stage->rd_valid) {
-	// 		ROB_Entry rob_entry = {
-	// 			.inst_type = stage->inst_type,
-	// 			.executed = stage->executed,
-	// 			.pc = stage->pc,
-	// 			.rd = stage->rd,
-	// 			.rd_value = stage->rd_value,
-	// 			.rd_valid = stage->rd_valid,
-	// 			.rs1 = stage->rs1,
-	// 			.rs1_value = stage->rs1_value,
-	// 			.rs1_valid = stage->rs1_valid,
-	// 			.rs2 = stage->rs2,
-	// 			.rs2_value = stage->rs2_value,
-	// 			.rs2_valid = stage->rs2_valid,
-	// 			.buffer = stage->buffer,
-	// 			.stage_cycle = stage->stage_cycle};
-	//
-	// 		ret = update_reorder_buffer_entry_data(rob, rob_entry)
-	// 		if (ret!=SUCCESS) {
-	// 			printf("Failed to Update Rob Entry (%d) for pc(%d):: %.5s\n", ret, stage->pc, stage->opcode);
-	// 		}
-	// 	}
-	// 	else {
-	// 		printf("MUL Three Stage Value not Ready for Phy Reg R%d for pc(%d):: %.5s\n", stage->rd, stage->pc, stage->opcode);
-	// 	}
-	// }
 
 	return 0;
 }
@@ -1358,6 +1376,7 @@ int execute_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue,
 	mul_three_stage(cpu);
 	branch_stage(cpu);
 	mem_stage(cpu);
+
 	writeback_stage(cpu, ls_queue, issue_queue, rob, rename_table);
 
 	return 0;
@@ -1383,9 +1402,8 @@ int commit_instruction(APEX_CPU* cpu, APEX_ROB* rob, APEX_RENAME* rename_table) 
 		}
 		else {
 			// free the physical regs
-			rename_table->reg_rename[rob_entry->rd].tag_valid = INVALID;
-
 			cpu->regs[src_reg] = rob_entry->rd_value;
+			rename_table->reg_rename[rob_entry->rd].tag_valid = INVALID;
 			set_reg_status(cpu, src_reg, -1);
 		}
 	}
@@ -1424,20 +1442,28 @@ int APEX_cpu_run(APEX_CPU* cpu, int num_cycle, APEX_LSQ* ls_queue, APEX_IQ* issu
 			}
 
 			int stage_ret = 0;
+			// commit inst
 			stage_ret = commit_instruction(cpu, rob, rename_table);
 			// adding inst to FU
 			stage_ret = issue_instruction(cpu, issue_queue);
+			// executing inst
 			stage_ret = execute_instruction(cpu, ls_queue, issue_queue, rob, rename_table);
 			// adding inst to IQ, LSQ, ROB
 			stage_ret = dispatch_instruction(cpu, ls_queue, issue_queue, rob, rename_table);
-
-			push_func_unit_stages(cpu);
-
+			// push only before IQ Stages
+			push_func_unit_stages(cpu, INVALID);
+			// only renaming happens
 			stage_ret = decode(cpu, rename_table);
-			stage_ret = fetch(cpu); // fetch inst from code memory
+			// after renaming is done just fetch the values from CPU OUTPUT Stages
+			// and update the DRF stage so while dispatching dependencies are handled
+			// fetch inst from code memory
+			stage_ret = fetch(cpu);
 			// dispatch func will have rename call inside
 			print_ls_iq_content(ls_queue, issue_queue);
 			print_rob_and_rename_content(rob, rename_table);
+
+			// push only after IQ Stages
+			push_func_unit_stages(cpu, VALID);
 
 			if ((stage_ret!=HALT)&&(stage_ret!=SUCCESS)) {
 				ret = stage_ret;
