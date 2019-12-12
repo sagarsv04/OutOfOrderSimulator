@@ -1197,47 +1197,47 @@ int branch_stage(APEX_CPU* cpu) {
 
 			case BZ:  // ************************************* BZ ************************************* //
 				// load buffer value to mem_address
-		  	stage->mem_address = stage->buffer;
+				stage->mem_address = stage->buffer;
 				if (!((stage->pc + stage->mem_address) < 4000)) {
-		      // cpu->pc = stage->pc + stage->mem_address;	// should i change pc value when rob commits Branch Inst
-		      // un stall Fetch and Decode stage if they are stalled
-		      // cpu->stage[DRF].stalled = 0;
-		      // cpu->stage[F].stalled = 0;
-		      // cpu->flags[ZF] = 0;
-		    }
+					// cpu->pc = stage->pc + stage->mem_address;	// should i change pc value when rob commits Branch Inst
+					// un stall Fetch and Decode stage if they are stalled
+					// cpu->stage[DRF].stalled = 0;
+					// cpu->stage[F].stalled = 0;
+					// cpu->flags[ZF] = 0;
+				}
 				else {
-		      fprintf(stderr, "Instruction %s Invalid Relative Address %d\n", stage->opcode, cpu->pc + stage->mem_address);
-		    }
+					fprintf(stderr, "Instruction %s Invalid Relative Address %d\n", stage->opcode, cpu->pc + stage->mem_address);
+				}
 				break;
 
 			case BNZ:  // ************************************* BNZ ************************************* //
 				// load buffer value to mem_address
-		  	stage->mem_address = stage->buffer;
+				stage->mem_address = stage->buffer;
 				if (!((stage->pc + stage->mem_address) < 4000)) {
-		      // cpu->pc = stage->pc + stage->mem_address;	// should i change pc value when rob commits Branch Inst
-		      // un stall Fetch and Decode stage if they are stalled
-		      // cpu->stage[DRF].stalled = 0;
-		      // cpu->stage[F].stalled = 0;
-		      // cpu->flags[ZF] = 0;
-		    }
+					// cpu->pc = stage->pc + stage->mem_address;	// should i change pc value when rob commits Branch Inst
+					// un stall Fetch and Decode stage if they are stalled
+					// cpu->stage[DRF].stalled = 0;
+					// cpu->stage[F].stalled = 0;
+					// cpu->flags[ZF] = 0;
+				}
 				else {
-		      fprintf(stderr, "Instruction %s Invalid Relative Address %d\n", stage->opcode, cpu->pc + stage->mem_address);
-		    }
+					fprintf(stderr, "Instruction %s Invalid Relative Address %d\n", stage->opcode, cpu->pc + stage->mem_address);
+				}
 				break;
 
 			case JUMP:  // ************************************* BNZ ************************************* //
 				// load buffer value to mem_address
-		  	stage->mem_address = stage->buffer;
+				stage->mem_address = stage->buffer;
 				if (!((stage->pc + stage->mem_address) < 4000)) {
-		      // cpu->pc = stage->pc + stage->mem_address;	// should i change pc value when rob commits Branch Inst
-		      // un stall Fetch and Decode stage if they are stalled
-		      // cpu->stage[DRF].stalled = 0;
-		      // cpu->stage[F].stalled = 0;
-		      // cpu->flags[ZF] = 0;
-		    }
+					// cpu->pc = stage->pc + stage->mem_address;	// should i change pc value when rob commits Branch Inst
+					// un stall Fetch and Decode stage if they are stalled
+					// cpu->stage[DRF].stalled = 0;
+					// cpu->stage[F].stalled = 0;
+					// cpu->flags[ZF] = 0;
+				}
 				else {
-		      fprintf(stderr, "Instruction %s Invalid Relative Address %d\n", stage->opcode, cpu->pc + stage->mem_address);
-		    }
+					fprintf(stderr, "Instruction %s Invalid Relative Address %d\n", stage->opcode, cpu->pc + stage->mem_address);
+				}
 				break;
 
 			default:
@@ -1415,7 +1415,7 @@ int writeback_stage(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APE
 
 					// check single src reg instructions
 					case STORE: case LOAD: case MOV: case ADDL: case SUBL: case JUMP:
-						if (cpu->stage[DRF].rs1==stage->rd) {
+						if ((cpu->stage[DRF].rs1==stage->rd)&&(cpu->stage[DRF].rs1_valid==INVALID)) {
 							cpu->stage[DRF].rs1_value = stage->rd_value;
 							cpu->stage[DRF].rs1_valid = stage->rd_valid;
 						}
@@ -1423,11 +1423,11 @@ int writeback_stage(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APE
 
 					// check two src reg instructions
 					case STR: case LDR: case ADD: case SUB: case MUL: case DIV: case AND: case OR: case EXOR:
-						if (cpu->stage[DRF].rs1==stage->rd) {
+						if ((cpu->stage[DRF].rs1==stage->rd)&&(cpu->stage[DRF].rs1_valid==INVALID)) {
 							cpu->stage[DRF].rs1_value = stage->rd_value;
 							cpu->stage[DRF].rs1_valid = stage->rd_valid;
 						}
-						if (cpu->stage[DRF].rs2==stage->rd) {
+						if ((cpu->stage[DRF].rs2==stage->rd)&&(cpu->stage[DRF].rs2_valid==INVALID)) {
 							cpu->stage[DRF].rs2_value = stage->rd_value;
 							cpu->stage[DRF].rs2_valid = stage->rd_valid;
 						}
@@ -1710,6 +1710,9 @@ int execute_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue,
 }
 
 
+/*
+ * ########################################## Commit Stage ##########################################
+*/
 int commit_instruction(APEX_CPU* cpu, APEX_IQ* issue_queue, APEX_ROB* rob, APEX_RENAME* rename_table) {
 	// check if rob entry is valid and data is valid then commit instruction and free rob entry
 	int ret = -1;
@@ -1750,26 +1753,20 @@ int commit_instruction(APEX_CPU* cpu, APEX_IQ* issue_queue, APEX_ROB* rob, APEX_
 			switch (cpu->stage[DRF].inst_type) {
 				// check single src reg instructions
 				case STORE: case LOAD: case MOV: case ADDL: case SUBL: case JUMP:
-				if (!cpu->stage[DRF].rs1_valid) {
-					if (cpu->stage[DRF].rs1==rob_entry->rd) {
-						cpu->stage[DRF].rs1_value = rob_entry->rd_value;
-						cpu->stage[DRF].rs1_valid = rob_entry->rd_valid;
-					}
+				if ((cpu->stage[DRF].rs1==rob_entry->rd)&&(cpu->stage[DRF].rs1_valid==INVALID)) {
+					cpu->stage[DRF].rs1_value = rob_entry->rd_value;
+					cpu->stage[DRF].rs1_valid = rob_entry->rd_valid;
 				}
 				break;
 				// check two src reg instructions
 				case STR: case LDR: case ADD: case SUB: case MUL: case DIV: case AND: case OR: case EXOR:
-				if (!cpu->stage[DRF].rs1_valid) {
-					if (cpu->stage[DRF].rs1==rob_entry->rd) {
-						cpu->stage[DRF].rs1_value = rob_entry->rd_value;
-						cpu->stage[DRF].rs1_valid = rob_entry->rd_valid;
-					}
+				if ((cpu->stage[DRF].rs1==rob_entry->rd)&&(cpu->stage[DRF].rs1_valid==INVALID)) {
+					cpu->stage[DRF].rs1_value = rob_entry->rd_value;
+					cpu->stage[DRF].rs1_valid = rob_entry->rd_valid;
 				}
-				if (!cpu->stage[DRF].rs2_valid) {
-					if (cpu->stage[DRF].rs2==rob_entry->rd) {
+				if ((cpu->stage[DRF].rs2==rob_entry->rd)&&(cpu->stage[DRF].rs2_valid==INVALID)) {
 						cpu->stage[DRF].rs2_value = rob_entry->rd_value;
 						cpu->stage[DRF].rs2_valid = rob_entry->rd_valid;
-					}
 				}
 				break;
 				// confirm if for Store we need to read all three src reg
@@ -1819,7 +1816,7 @@ int APEX_cpu_run(APEX_CPU* cpu, int num_cycle, APEX_LSQ* ls_queue, APEX_IQ* issu
 			break;
 		}
 		else {
-		    cpu->clock++; // places here so we can see prints aligned with executions
+				cpu->clock++; // places here so we can see prints aligned with executions
 
 			if (ENABLE_DEBUG_MESSAGES) {
 				printf("\n--------------------------------\n");

@@ -313,7 +313,7 @@ void print_rob_and_rename_content(APEX_ROB* rob, APEX_RENAME* rename_table) {
 							"\tR%02d-%d\t|"
 							"\t%d\t|"
 							"\t%d\n",
-		 					i,
+							i,
 							rob->rob_entry[i].status,
 							rob->rob_entry[i].inst_type,
 							inst_type_str,

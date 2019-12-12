@@ -123,7 +123,7 @@ int update_issue_queue_entry(APEX_IQ* issue_queue, LS_IQ_Entry ls_iq_entry) {
 					// rs1_position[i] = i;
 					update_pos_sum += 1;
 				}
-				if ((ls_iq_entry.rd == issue_queue->iq_entries[i].rs2)&&(issue_queue->iq_entries[i].rs1_ready==INVALID)) {
+				if ((ls_iq_entry.rd == issue_queue->iq_entries[i].rs2)&&(issue_queue->iq_entries[i].rs2_ready==INVALID)) {
 					issue_queue->iq_entries[i].rs2_value = ls_iq_entry.rd_value;
 					issue_queue->iq_entries[i].rs2_ready = VALID;
 					// rs2_position[i] = i;
