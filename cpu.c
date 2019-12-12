@@ -1768,7 +1768,7 @@ int commit_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, 
 			ret = update_ls_queue_entry_reg(ls_queue, ls_iq_entry);
 			if (ret==FAILURE) {
 				if (ENABLE_DEBUG_MESSAGES_L2) {
-					fprintf(stderr, "Commit Nothing to Update in LSQ Entry (%d) for pc(%d)\n", ls_iq_entry.pc);
+					fprintf(stderr, "Commit Nothing to Update in LSQ Entry (%d) for pc(%d)\n", ret, ls_iq_entry.pc);
 				}
 			}
 

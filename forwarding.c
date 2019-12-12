@@ -129,6 +129,11 @@ void push_func_unit_stages(APEX_CPU* cpu, int after_iq){
 			clear_stage_entry(cpu, MEM);
 		}
 
+		if (cpu->stage[BRANCH].executed) {
+			// and empty the BRANCH stage
+			clear_stage_entry(cpu, BRANCH);
+		}
+
 	}
 	else {
 		if (!cpu->stage[F].stalled) {
