@@ -186,4 +186,6 @@ int execute_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue,
 
 int commit_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APEX_ROB* rob, APEX_RENAME* rename_table);
 
+void branch_misprediction(APEX_CPU* cpu, ROB_Entry* rob_entry, APEX_ROB* rob, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APEX_RENAME* rename_table);
+
 #endif

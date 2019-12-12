@@ -113,7 +113,7 @@ int update_reorder_buffer_entry_data(APEX_ROB* rob, ROB_Entry rob_entry) {
 		// a better way would be checking between commit_ptr and issue_ptr
 		for (int i=0; i<ROB_SIZE; i++) {
 			// check only alloted entries
-			if (rob->rob_entry[i].status == 1) {
+			if (rob->rob_entry[i].status == VALID) {
 				// check pc to match instructions
 				if (rob->rob_entry[i].inst_ptr==rob_entry.pc) {
 					update_position = i;
@@ -127,7 +127,10 @@ int update_reorder_buffer_entry_data(APEX_ROB* rob, ROB_Entry rob_entry) {
 		else {
 			if (rob->rob_entry[update_position].rd == rob_entry.rd) {
 				rob->rob_entry[update_position].rd_value = rob_entry.rd_value;
-				rob->rob_entry[update_position].valid = VALID;
+				rob->rob_entry[update_position].valid = rob_entry.rd_valid;
+				if (rob_entry.inst_type==BRANCH) {
+					rob->rob_entry[update_position].exception = rob_entry.rd_valid;
+				}
 			}
 			else {
 				return ERROR; // found the pc value inst but failed to match desc reg
@@ -154,6 +157,7 @@ int commit_reorder_buffer_entry(APEX_ROB* rob, ROB_Entry* rob_entry) {
 		rob_entry->rd = rob->rob_entry[rob->commit_ptr].rd;
 		rob_entry->rd_value = rob->rob_entry[rob->commit_ptr].rd_value;
 		rob_entry->rd_valid = rob->rob_entry[rob->commit_ptr].valid;
+		rob_entry->exception = rob->rob_entry[rob->commit_ptr].exception;
 		rob_entry->rs1 = INVALID;
 		rob_entry->rs1_value = INVALID;
 		rob_entry->rs1_valid = INVALID;
@@ -287,6 +291,35 @@ int rename_desc_reg(int* desc_reg, APEX_RENAME* rename_table) {
 	}
 
 	return SUCCESS;
+}
+
+
+void clear_rename_table(APEX_RENAME* rename_table) {
+
+	// clear all rename
+	for(int i=0; i<RENAME_TABLE_SIZE; i++) {
+		rename_table->reg_rename[i].tag_valid = INVALID;
+		rename_table->reg_rename[i].rename_tag = INVALID;
+	}
+	rename_table->last_rename_pos = INVALID;
+}
+
+
+void clear_reorder_buffer(APEX_ROB* rob) {
+
+	// clear all rob entries
+	for(int i=0; i<ROB_SIZE; i++) {
+		rob->rob_entry[i].status = INVALID;
+		rob->rob_entry[i].inst_type = INVALID;
+		rob->rob_entry[i].inst_ptr = INVALID;
+		rob->rob_entry[i].rd = INVALID;
+		rob->rob_entry[i].rd_value = INVALID;
+		rob->rob_entry[i].exception = INVALID;
+		rob->rob_entry[i].valid = INVALID;
+	}
+	rob->commit_ptr = INVALID;
+	rob->issue_ptr = INVALID;
+	rob->buffer_length = INVALID;
 }
 
 

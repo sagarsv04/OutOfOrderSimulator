@@ -89,7 +89,7 @@ static void print_instruction(CPU_Stage* stage) {
 	switch (stage->inst_type) {
 
 		case STORE: case LOAD: case ADDL: case SUBL:
-			printf("%s,R%d,R%d,#%d ", stage->opcode, stage->rd, stage->rs1, stage->imm);
+			printf("%s,R%d,R%d,#%d ", stage->opcode, stage->rd, stage->rs1, stage->buffer);
 			break;
 
 		case STR: case LDR: case ADD: case SUB:case MUL: case DIV: case AND: case OR: case EXOR:
@@ -97,7 +97,7 @@ static void print_instruction(CPU_Stage* stage) {
 			break;
 
 		case MOVC: case JUMP:
-			printf("%s,R%d,#%d ", stage->opcode, stage->rd, stage->imm);
+			printf("%s,R%d,#%d ", stage->opcode, stage->rd, stage->buffer);
 			break;
 
 		case MOV:
@@ -105,7 +105,7 @@ static void print_instruction(CPU_Stage* stage) {
 			break;
 
 		case BZ: case BNZ:
-			printf("%s,#%d ", stage->opcode, stage->imm);
+			printf("%s,#%d ", stage->opcode, stage->buffer);
 			break;
 
 		case HALT: case NOP:
@@ -211,6 +211,7 @@ int fetch(APEX_CPU* cpu) {
 		stage->rs2 = current_ins->rs2;
 		stage->rs2_valid = 0;
 		stage->imm = current_ins->imm;
+		stage->buffer = current_ins->imm;
 		stage->inst_type = current_ins->type;
 
 		/* Copy data from Fetch latch to Decode latch*/
@@ -982,13 +983,22 @@ int int_two_stage(APEX_CPU* cpu) {
 				// add registers value and keep in rd_value for mem / writeback stage
 				if ((stage->rs2_value > 0 && stage->rs1_value > INT_MAX - stage->rs2_value) ||
 					(stage->rs2_value < 0 && stage->rs1_value < INT_MIN - stage->rs2_value)) {
-					stage->rd_valid = INVALID;
+					if (ENABLE_DEBUG_MESSAGES_L2) {
+						fprintf(stderr, "Overflow Occurred\n");
+					}
+					stage->rd_valid = VALID;
 					cpu->flags[OF] = 1; // there is an overflow
 				}
 				else {
 					stage->rd_value = stage->rs1_value + stage->rs2_value;
 					stage->rd_valid = VALID;
 					cpu->flags[OF] = 0; // there is no overflow
+					if (stage->rd_value == 0) {
+						cpu->flags[ZF] = 1; // computation resulted value zero
+					}
+					else {
+						cpu->flags[ZF] = 0; // computation did not resulted value zero
+					}
 				}
 				break;
 
@@ -996,41 +1006,68 @@ int int_two_stage(APEX_CPU* cpu) {
 				// add literal and register value and keep in rd_value for mem / writeback stage
 				if ((stage->buffer > 0 && stage->rs1_value > INT_MAX - stage->buffer) ||
 					(stage->buffer < 0 && stage->rs1_value < INT_MIN - stage->buffer)) {
-					stage->rd_valid = INVALID;
+					if (ENABLE_DEBUG_MESSAGES_L2) {
+						fprintf(stderr, "Overflow Occurred\n");
+					}
+					stage->rd_valid = VALID;
 					cpu->flags[OF] = 1; // there is an overflow
 				}
 				else {
 					stage->rd_value = stage->rs1_value + stage->buffer;
 					stage->rd_valid = VALID;
 					cpu->flags[OF] = 0; // there is no overflow
+					if (stage->rd_value == 0) {
+						cpu->flags[ZF] = 1; // computation resulted value zero
+					}
+					else {
+						cpu->flags[ZF] = 0; // computation did not resulted value zero
+					}
 				}
 				break;
 
 			case SUB:	// ************************************* SUB ************************************* //
 				// sub registers value and keep in rd_value for mem / writeback stage
 				if (stage->rs2_value > stage->rs1_value) {
+					if (ENABLE_DEBUG_MESSAGES_L2) {
+						fprintf(stderr, "Carry Occurred\n");
+					}
 					stage->rd_value = stage->rs1_value - stage->rs2_value;
-					stage->rd_valid = INVALID;
+					stage->rd_valid = VALID;
 					cpu->flags[CF] = 1; // there is an carry
 				}
 				else {
 					stage->rd_value = stage->rs1_value - stage->rs2_value;
 					stage->rd_valid = VALID;
 					cpu->flags[CF] = 0; // there is no carry
+					if (stage->rd_value == 0) {
+						cpu->flags[ZF] = 1; // computation resulted value zero
+					}
+					else {
+						cpu->flags[ZF] = 0; // computation did not resulted value zero
+					}
 				}
 				break;
 
 			case SUBL:	// ************************************* SUBL ************************************* //
 				// sub literal and register value and keep in rd_value for mem / writeback stage
 				if (stage->buffer > stage->rs1_value) {
+					if (ENABLE_DEBUG_MESSAGES_L2) {
+						fprintf(stderr, "Carry Occurred\n");
+					}
 					stage->rd_value = stage->rs1_value - stage->buffer;
-					stage->rd_valid = INVALID;
+					stage->rd_valid = VALID;
 					cpu->flags[CF] = 1; // there is an carry
 				}
 				else {
 					stage->rd_value = stage->rs1_value - stage->buffer;
 					stage->rd_valid = VALID;
 					cpu->flags[CF] = 0; // there is no carry
+					if (stage->rd_value == 0) {
+						cpu->flags[ZF] = 1; // computation resulted value zero
+					}
+					else {
+						cpu->flags[ZF] = 0; // computation did not resulted value zero
+					}
 				}
 				break;
 
@@ -1039,11 +1076,19 @@ int int_two_stage(APEX_CPU* cpu) {
 				if (stage->rs2_value != 0) {
 					stage->rd_value = stage->rs1_value / stage->rs2_value;
 					stage->rd_valid = VALID;
+					if (stage->rd_value == 0) {
+						cpu->flags[ZF] = 1; // computation resulted value zero
+					}
+					else {
+						cpu->flags[ZF] = 0; // computation did not resulted value zero
+					}
 				}
 				else {
-					fprintf(stderr, "Division By Zero Returning Value Zero\n");
+					if (ENABLE_DEBUG_MESSAGES_L2) {
+						fprintf(stderr, "Division By Zero Returning Value Zero\n");
+					}
 					stage->rd_value = 0;
-					stage->rd_valid = INVALID;
+					stage->rd_valid = VALID;
 				}
 				break;
 
@@ -1168,6 +1213,12 @@ int mul_three_stage(APEX_CPU* cpu) {
 				// if possible check y it requires 3 cycle
 				stage->rd_value = stage->rs1_value * stage->rs2_value;
 				stage->rd_valid = VALID;
+				if (stage->rd_value == 0) {
+					cpu->flags[ZF] = 1; // computation resulted value zero
+				}
+				else {
+					cpu->flags[ZF] = 0; // computation did not resulted value zero
+				}
 				break;
 
 			default:
@@ -1204,12 +1255,19 @@ int branch_stage(APEX_CPU* cpu) {
 					fprintf(stderr, "Instruction %s Invalid Relative Address %d\n", stage->opcode, new_pc);
 				}
 				else {
-					// so rob can commite
-					// stage->rd_value = INVALID;
-					// stage->rd_valid = VALID;
-					// cpu->pc = new_pc;
-					// clear_stage_entry(cpu, DRF);
-					// clear_stage_entry(cpu, F);
+					if (cpu->flags[ZF] == VALID) {
+						clear_stage_entry(cpu, DRF);
+						clear_stage_entry(cpu, F);
+						stage->rd_value = INVALID;
+						stage->rd_valid = VALID;
+						cpu->pc = new_pc;
+						// stall F so it wont fetch in same cycle
+						cpu->stage[F].stalled = VALID;
+					}
+					else {
+						stage->rd_value = VALID;
+						stage->rd_valid = INVALID;
+					}
 				}
 				break;
 
@@ -1221,19 +1279,26 @@ int branch_stage(APEX_CPU* cpu) {
 					fprintf(stderr, "Instruction %s Invalid Relative Address %d\n", stage->opcode, new_pc);
 				}
 				else {
-					// so rob can commite
-					// stage->rd_value = INVALID;
-					// stage->rd_valid = VALID;
-					// cpu->pc = new_pc;
-					// clear_stage_entry(cpu, DRF);
-					// clear_stage_entry(cpu, F);
+					if (cpu->flags[ZF] == INVALID) {
+						stage->rd_value = VALID;
+						stage->rd_valid = VALID;
+						clear_stage_entry(cpu, DRF);
+						clear_stage_entry(cpu, F);
+						cpu->pc = new_pc;
+						// stall F so it wont fetch in same cycle
+						cpu->stage[F].stalled = VALID;
+					}
+					else {
+						stage->rd_value = INVALID;
+						stage->rd_valid = INVALID;
+					}
 				}
 				break;
 
 			case JUMP:  // ************************************* BNZ ************************************* //
 				// load buffer value to mem_address
-				stage->mem_address = stage->buffer;
-				int new_pc = stage->rs1_value + stage->mem_address;
+				stage->mem_address = stage->rs1_value + stage->buffer;
+				new_pc = stage->mem_address;
 				if ((new_pc < 4000)||(new_pc > ((cpu->code_memory_size*4)+4000))) {
 					fprintf(stderr, "Instruction %s Invalid Address %d\n", stage->opcode, new_pc);
 				}
@@ -1373,6 +1438,7 @@ int writeback_stage(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APE
 				.rs2_value = stage->rs2_value,
 				.rs2_valid = stage->rs2_valid,
 				.buffer = stage->buffer,
+				.exception = stage->rd_valid,
 				.stage_cycle = stage->stage_cycle};
 
 			if ((cpu_stages[i]==INT_TWO)&&((stage->inst_type==STORE)||(stage->inst_type==STR)||(stage->inst_type==LOAD)||(stage->inst_type==LDR))) {
@@ -1500,6 +1566,7 @@ int dispatch_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue
 			.rs2 = stage->rs2,
 			.rs2_value = stage->rs2_value,
 			.rs2_valid = stage->rs2_valid,
+			.exception = INVALID,
 			.buffer = stage->buffer,
 			.stage_cycle = INVALID};
 
@@ -1723,6 +1790,26 @@ int execute_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue,
 
 
 /*
+ * ########################################## Branch Misprediction Stage ##########################################
+*/
+void branch_misprediction(APEX_CPU* cpu, ROB_Entry* rob_entry, APEX_ROB* rob, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APEX_RENAME* rename_table) {
+
+	clear_rename_table(rename_table);
+	clear_reorder_buffer(rob);
+
+	clear_issue_queue_entry(issue_queue);
+	clear_ls_queue_entry(ls_queue);
+
+	// clear all the cpu stages
+	// change pc and flush F DRF
+	clear_stage_entry(cpu, DRF);
+	clear_stage_entry(cpu, F);
+	// stall F so it wont fetch in same cycle
+	cpu->stage[F].stalled = VALID;
+
+}
+
+/*
  * ########################################## Commit Stage ##########################################
 */
 int commit_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APEX_ROB* rob, APEX_RENAME* rename_table) {
@@ -1737,9 +1824,30 @@ int commit_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, 
 		if ((rob_entry->inst_type==STORE)||(rob_entry->inst_type==STR)) {
 			; // no need to free regs or pass rd value
 		}
-		else if ((rob_entry->inst_type==JUMP)||(rob_entry->inst_type==BZ)||(rob_entry->inst_type==BNZ)) {
+		else if (rob_entry->inst_type==JUMP) {
 			; // no need to free regs or pass rd value
 		}
+		else if (rob_entry->inst_type==BZ) {
+			// no need to free regs or pass rd value
+			if ((cpu->flags[ZF]==VALID)&&(rob_entry->exception)) {
+				// branch misspredicted
+				// revert the changes
+				branch_misprediction(cpu, rob_entry, rob, ls_queue, issue_queue, rename_table);
+				// pc of branch inst plus 4 will be nex pc
+				cpu->pc = rob_entry->pc + 4;
+			}
+		}
+		else if (rob_entry->inst_type==BNZ) {
+			// no need to free regs or pass rd value
+			if ((cpu->flags[ZF]==INVALID)&&(rob_entry->exception)) {
+				// branch misspredicted
+				// revert the changes
+				branch_misprediction(cpu, rob_entry, rob, ls_queue, issue_queue, rename_table);
+				// pc of branch inst plus 4 will be nex pc
+				cpu->pc = rob_entry->pc + 4;
+			}
+		}
+
 		else {
 			// also update IQ here as well
 			LS_IQ_Entry ls_iq_entry = {

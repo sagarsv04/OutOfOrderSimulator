@@ -104,6 +104,9 @@ int update_ls_queue_entry_reg(APEX_LSQ* ls_queue, LS_IQ_Entry ls_iq_entry);
 
 int get_ls_queue_index_to_issue(APEX_LSQ* ls_queue, int* lsq_index);
 
+void clear_issue_queue_entry(APEX_IQ* issue_queue);
+void clear_ls_queue_entry(APEX_LSQ* ls_queue);
+
 void print_ls_iq_content(APEX_LSQ* ls_queue, APEX_IQ* issue_queue);
 
 #endif

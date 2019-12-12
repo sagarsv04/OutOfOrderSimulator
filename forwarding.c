@@ -141,6 +141,11 @@ void push_func_unit_stages(APEX_CPU* cpu, int after_iq){
 			cpu->stage[DRF] = cpu->stage[F];
 			cpu->stage[DRF].executed = 0;
 		}
+		else if (cpu->stage[F].stalled) {
+			if (cpu->stage[BRANCH].empty) {
+				cpu->stage[F].stalled = INVALID;
+			}
+		}
 		else {
 			add_bubble_to_stage(cpu, DRF);
 		}

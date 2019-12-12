@@ -233,6 +233,29 @@ int get_issue_queue_index_to_issue(APEX_IQ* issue_queue, int* issue_index) {
 }
 
 
+void clear_issue_queue_entry(APEX_IQ* issue_queue) {
+
+	// clear all rob entries
+	for(int i=0; i<IQ_SIZE; i++) {
+		issue_queue->iq_entries[i].status = INVALID;
+		issue_queue->iq_entries[i].inst_type = INVALID;
+		issue_queue->iq_entries[i].inst_ptr = INVALID;
+		issue_queue->iq_entries[i].literal = INVALID;
+		issue_queue->iq_entries[i].rd = INVALID;
+		issue_queue->iq_entries[i].rd_ready = INVALID;
+		issue_queue->iq_entries[i].rd_value = INVALID;
+		issue_queue->iq_entries[i].rs1 = INVALID;
+		issue_queue->iq_entries[i].rs1_ready = INVALID;
+		issue_queue->iq_entries[i].rs1_value = INVALID;
+		issue_queue->iq_entries[i].rs2 = INVALID;
+		issue_queue->iq_entries[i].rs2_ready = INVALID;
+		issue_queue->iq_entries[i].rs2_value = INVALID;
+		issue_queue->iq_entries[i].stage_cycle = INVALID;
+		issue_queue->iq_entries[i].lsq_index = INVALID;
+	}
+}
+
+
 /*
  * ########################################## Load Store Queue ##########################################
 */
@@ -397,6 +420,27 @@ int get_ls_queue_index_to_issue(APEX_LSQ* ls_queue, int* lsq_index) {
 	return SUCCESS;
 }
 
+
+void clear_ls_queue_entry(APEX_LSQ* ls_queue) {
+
+	// clear all rob entries
+	for(int i=0; i<LSQ_SIZE; i++) {
+		ls_queue->lsq_entries[i].status = INVALID;
+		ls_queue->lsq_entries[i].load_store = INVALID;
+		ls_queue->lsq_entries[i].inst_ptr = INVALID;
+		ls_queue->lsq_entries[i].mem_valid = INVALID;
+		ls_queue->lsq_entries[i].mem_address = INVALID;
+		ls_queue->lsq_entries[i].rd = INVALID;
+		ls_queue->lsq_entries[i].rd_value = INVALID;
+		ls_queue->lsq_entries[i].data_ready = INVALID;
+		ls_queue->lsq_entries[i].rs1 = INVALID;
+		ls_queue->lsq_entries[i].rs1_value = INVALID;
+		ls_queue->lsq_entries[i].rs2 = INVALID;
+		ls_queue->lsq_entries[i].rs2_value = INVALID;
+		ls_queue->lsq_entries[i].literal = INVALID;
+		ls_queue->lsq_entries[i].stage_cycle = INVALID;
+	}
+}
 
 
 void print_ls_iq_content(APEX_LSQ* ls_queue, APEX_IQ* issue_queue) {

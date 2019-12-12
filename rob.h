@@ -74,6 +74,7 @@ typedef struct ROB_Entry {
 	int rs2_value;
 	int rs2_valid;
 	int buffer;
+	int exception;
 	int stage_cycle;
 } ROB_Entry;
 
@@ -96,6 +97,9 @@ int get_phy_reg_renamed_tag(int reg_number, APEX_RENAME* rename_table);
 
 int update_reorder_buffer_entry_data(APEX_ROB* rob, ROB_Entry rob_entry);
 int commit_reorder_buffer_entry(APEX_ROB* rob, ROB_Entry* rob_entry);
+
+void clear_rename_table(APEX_RENAME* rename_table);
+void clear_reorder_buffer(APEX_ROB* rob);
 
 void print_rob_and_rename_content(APEX_ROB* rob, APEX_RENAME* rename_table);
 
