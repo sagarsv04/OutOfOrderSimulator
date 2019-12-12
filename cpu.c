@@ -277,12 +277,28 @@ int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 						printf("Failed to get renamed tag for R%d\n", stage->rs1);
 					}
 				}
+				else {
+					// check arch reg if valid read from them
+					// here 0 is valid and any other number is invalid
+					if(get_reg_status(cpu, stage->rs1)==INVALID) {
+						stage->rs1_value = get_reg_values(cpu, stage->rs1);
+						stage->rs1_valid = VALID;
+					}
+				}
 				// check if desc regs are renamed
 				if (check_if_reg_renamed(stage->rd, rename_table)==SUCCESS) {
 					// get the desc reg renamed tag
 					ret = get_reg_renamed_tag(&(stage->rd), rename_table);
 					if (ret!=SUCCESS) {
 						printf("Failed to get renamed tag for R%d\n", stage->rd);
+					}
+				}
+				else {
+					// check arch reg if valid read from them
+					// here 0 is valid and any other number is invalid
+					if(get_reg_status(cpu, stage->rd)==INVALID) {
+						stage->rd_value = get_reg_values(cpu, stage->rd);
+						stage->rd_valid = VALID;
 					}
 				}
 				break;
@@ -298,7 +314,12 @@ int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 					}
 				}
 				else {
-					; // get it from arch reg if valid and dont rename
+					// check arch reg if valid read from them
+					// here 0 is valid and any other number is invalid
+					if(get_reg_status(cpu, stage->rs1)==INVALID) {
+						stage->rs1_value = get_reg_values(cpu, stage->rs1);
+						stage->rs1_valid = VALID;
+					}
 				}
 				// check if src regs are renamed
 				if (check_if_reg_renamed(stage->rs2, rename_table)==SUCCESS) {
@@ -306,6 +327,14 @@ int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 					ret = get_reg_renamed_tag(&(stage->rs2), rename_table);
 					if (ret!=SUCCESS) {
 						printf("Failed to get renamed tag for R%d\n", stage->rs2);
+					}
+				}
+				else {
+					// check arch reg if valid read from them
+					// here 0 is valid and any other number is invalid
+					if(get_reg_status(cpu, stage->rs2)==INVALID) {
+						stage->rs2_value = get_reg_values(cpu, stage->rs2);
+						stage->rs2_valid = VALID;
 					}
 				}
 				// check if desc regs are renamed
@@ -316,6 +345,15 @@ int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 						printf("Failed to get renamed tag for R%d\n", stage->rd);
 					}
 				}
+				else {
+					// check arch reg if valid read from them
+					// here 0 is valid and any other number is invalid
+					if(get_reg_status(cpu, stage->rd)==INVALID) {
+						stage->rd_value = get_reg_values(cpu, stage->rd);
+						stage->rd_valid = VALID;
+					}
+				}
+
 				break;
 
 			case LOAD:  // ************************************* LOAD ************************************* //
@@ -329,6 +367,14 @@ int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 						printf("Failed to get renamed tag for R%d\n", stage->rs1);
 					}
 				}
+				else {
+					// check arch reg if valid read from them
+					// here 0 is valid and any other number is invalid
+					if(get_reg_status(cpu, stage->rs1)==INVALID) {
+						stage->rs1_value = get_reg_values(cpu, stage->rs1);
+						stage->rs1_valid = VALID;
+					}
+				}
 				// check if renaming can be done
 				if (can_rename_reg_tag(rename_table)==SUCCESS) {
 					// change the desc regs tag
@@ -338,7 +384,7 @@ int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 					}
 				}
 				else {
-					printf("Can't rename reg");
+					printf("Cannot Rename Register R%d of pc(%d) :: %s\n", stage->rd, stage->pc, stage->opcode);
 				}
 				break;
 
@@ -352,12 +398,28 @@ int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 						printf("Failed to get renamed tag for R%d\n", stage->rs1);
 					}
 				}
+				else {
+					// check arch reg if valid read from them
+					// here 0 is valid and any other number is invalid
+					if(get_reg_status(cpu, stage->rs1)==INVALID) {
+						stage->rs1_value = get_reg_values(cpu, stage->rs1);
+						stage->rs1_valid = VALID;
+					}
+				}
 				// check if src regs are renamed
 				if (check_if_reg_renamed(stage->rs2, rename_table)==SUCCESS) {
 					// get the src reg renamed tag
 					ret = get_reg_renamed_tag(&(stage->rs2), rename_table);
 					if (ret!=SUCCESS) {
 						printf("Failed to get renamed tag for R%d\n", stage->rs2);
+					}
+				}
+				else {
+					// check arch reg if valid read from them
+					// here 0 is valid and any other number is invalid
+					if(get_reg_status(cpu, stage->rs2)==INVALID) {
+						stage->rs2_value = get_reg_values(cpu, stage->rs2);
+						stage->rs2_valid = VALID;
 					}
 				}
 				// check if renaming can be done
@@ -369,7 +431,7 @@ int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 					}
 				}
 				else {
-					printf("Can't rename reg");
+					printf("Cannot Rename Register R%d of pc(%d) :: %s\n", stage->rd, stage->pc, stage->opcode);
 				}
 				break;
 
@@ -382,7 +444,7 @@ int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 					ret = rename_desc_reg(&(stage->rd), rename_table);
 				}
 				else {
-					printf("Failed to rename tag for R%d\n", stage->rd);
+					printf("Cannot Rename Register R%d of pc(%d) :: %s\n", stage->rd, stage->pc, stage->opcode);
 				}
 				break;
 
@@ -396,13 +458,21 @@ int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 						printf("Failed to get renamed tag for R%d\n", stage->rs1);
 					}
 				}
+				else {
+					// check arch reg if valid read from them
+					// here 0 is valid and any other number is invalid
+					if(get_reg_status(cpu, stage->rs1)==INVALID) {
+						stage->rs1_value = get_reg_values(cpu, stage->rs1);
+						stage->rs1_valid = VALID;
+					}
+				}
 				// check if renaming can be done
 				if (can_rename_reg_tag(rename_table)==SUCCESS) {
 					// change the desc regs tag
 					ret = rename_desc_reg(&(stage->rd), rename_table);
 				}
 				else {
-					printf("Failed to rename tag for R%d\n", stage->rd);
+					printf("Cannot Rename Register R%d of pc(%d) :: %s\n", stage->rd, stage->pc, stage->opcode);
 				}
 				break;
 
@@ -416,6 +486,14 @@ int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 						printf("Failed to get renamed tag for R%d\n", stage->rs1);
 					}
 				}
+				else {
+					// check arch reg if valid read from them
+					// here 0 is valid and any other number is invalid
+					if(get_reg_status(cpu, stage->rs1)==INVALID) {
+						stage->rs1_value = get_reg_values(cpu, stage->rs1);
+						stage->rs1_valid = VALID;
+					}
+				}
 				// check if src regs are renamed
 				if (check_if_reg_renamed(stage->rs2, rename_table)==SUCCESS) {
 					// get the src reg renamed tag
@@ -424,13 +502,21 @@ int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 						printf("Failed to get renamed tag for R%d\n", stage->rs2);
 					}
 				}
+				else {
+					// check arch reg if valid read from them
+					// here 0 is valid and any other number is invalid
+					if(get_reg_status(cpu, stage->rs2)==INVALID) {
+						stage->rs2_value = get_reg_values(cpu, stage->rs2);
+						stage->rs2_valid = VALID;
+					}
+				}
 				// check if renaming can be done
 				if (can_rename_reg_tag(rename_table)==SUCCESS) {
 					// change the desc regs tag
 					ret = rename_desc_reg(&(stage->rd), rename_table);
 				}
 				else {
-					printf("Failed to rename tag for R%d\n", stage->rd);
+					printf("Cannot Rename Register R%d of pc(%d) :: %s\n", stage->rd, stage->pc, stage->opcode);
 				}
 				break;
 
@@ -445,6 +531,14 @@ int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 						printf("Failed to get renamed tag for R%d\n", stage->rs1);
 					}
 				}
+				else {
+					// check arch reg if valid read from them
+					// here 0 is valid and any other number is invalid
+					if(get_reg_status(cpu, stage->rs1)==INVALID) {
+						stage->rs1_value = get_reg_values(cpu, stage->rs1);
+						stage->rs1_valid = VALID;
+					}
+				}
 				// check if renaming can be done
 				if (can_rename_reg_tag(rename_table)==SUCCESS) {
 					// change the desc regs tag
@@ -454,7 +548,7 @@ int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 					}
 				}
 				else {
-					printf("Failed to rename tag for R%d\n", stage->rd);
+					printf("Cannot Rename Register R%d of pc(%d) :: %s\n", stage->rd, stage->pc, stage->opcode);
 				}
 				break;
 
@@ -468,6 +562,14 @@ int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 						printf("Failed to get renamed tag for R%d\n", stage->rs1);
 					}
 				}
+				else {
+					// check arch reg if valid read from them
+					// here 0 is valid and any other number is invalid
+					if(get_reg_status(cpu, stage->rs1)==INVALID) {
+						stage->rs1_value = get_reg_values(cpu, stage->rs1);
+						stage->rs1_valid = VALID;
+					}
+				}
 				// check if src regs are renamed
 				if (check_if_reg_renamed(stage->rs2, rename_table)==SUCCESS) {
 					// get the src reg renamed tag
@@ -476,13 +578,21 @@ int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 						printf("Failed to get renamed tag for R%d\n", stage->rs2);
 					}
 				}
+				else {
+					// check arch reg if valid read from them
+					// here 0 is valid and any other number is invalid
+					if(get_reg_status(cpu, stage->rs2)==INVALID) {
+						stage->rs2_value = get_reg_values(cpu, stage->rs2);
+						stage->rs2_valid = VALID;
+					}
+				}
 				// check if renaming can be done
 				if (can_rename_reg_tag(rename_table)==SUCCESS) {
 					// change the desc regs tag
 					ret = rename_desc_reg(&(stage->rd), rename_table);
 				}
 				else {
-					printf("Failed to rename tag for R%d\n", stage->rd);
+					printf("Cannot Rename Register R%d of pc(%d) :: %s\n", stage->rd, stage->pc, stage->opcode);
 				}
 				break;
 
@@ -497,13 +607,21 @@ int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 						printf("Failed to get renamed tag for R%d\n", stage->rs1);
 					}
 				}
+				else {
+					// check arch reg if valid read from them
+					// here 0 is valid and any other number is invalid
+					if(get_reg_status(cpu, stage->rs1)==INVALID) {
+						stage->rs1_value = get_reg_values(cpu, stage->rs1);
+						stage->rs1_valid = VALID;
+					}
+				}
 				// check if renaming can be done
 				if (can_rename_reg_tag(rename_table)==SUCCESS) {
 					// change the desc regs tag
 					ret = rename_desc_reg(&(stage->rd), rename_table);
 				}
 				else {
-					printf("Failed to rename tag for R%d\n", stage->rd);
+					printf("Cannot Rename Register R%d of pc(%d) :: %s\n", stage->rd, stage->pc, stage->opcode);
 				}
 				break;
 
@@ -517,6 +635,14 @@ int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 						printf("Failed to get renamed tag for R%d\n", stage->rs1);
 					}
 				}
+				else {
+					// check arch reg if valid read from them
+					// here 0 is valid and any other number is invalid
+					if(get_reg_status(cpu, stage->rs1)==INVALID) {
+						stage->rs1_value = get_reg_values(cpu, stage->rs1);
+						stage->rs1_valid = VALID;
+					}
+				}
 				// check if src regs are renamed
 				if (check_if_reg_renamed(stage->rs2, rename_table)==SUCCESS) {
 					// get the src reg renamed tag
@@ -525,13 +651,21 @@ int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 						printf("Failed to get renamed tag for R%d\n", stage->rs2);
 					}
 				}
+				else {
+					// check arch reg if valid read from them
+					// here 0 is valid and any other number is invalid
+					if(get_reg_status(cpu, stage->rs2)==INVALID) {
+						stage->rs2_value = get_reg_values(cpu, stage->rs2);
+						stage->rs2_valid = VALID;
+					}
+				}
 				// check if renaming can be done
 				if (can_rename_reg_tag(rename_table)==SUCCESS) {
 					// change the desc regs tag
 					ret = rename_desc_reg(&(stage->rd), rename_table);
 				}
 				else {
-					printf("Failed to rename tag for R%d\n", stage->rd);
+					printf("Cannot Rename Register R%d of pc(%d) :: %s\n", stage->rd, stage->pc, stage->opcode);
 				}
 				break;
 
@@ -545,6 +679,14 @@ int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 						printf("Failed to get renamed tag for R%d\n", stage->rs1);
 					}
 				}
+				else {
+					// check arch reg if valid read from them
+					// here 0 is valid and any other number is invalid
+					if(get_reg_status(cpu, stage->rs1)==INVALID) {
+						stage->rs1_value = get_reg_values(cpu, stage->rs1);
+						stage->rs1_valid = VALID;
+					}
+				}
 				// check if src regs are renamed
 				if (check_if_reg_renamed(stage->rs2, rename_table)==SUCCESS) {
 					// get the src reg renamed tag
@@ -553,13 +695,21 @@ int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 						printf("Failed to get renamed tag for R%d\n", stage->rs2);
 					}
 				}
+				else {
+					// check arch reg if valid read from them
+					// here 0 is valid and any other number is invalid
+					if(get_reg_status(cpu, stage->rs1)==INVALID) {
+						stage->rs2_value = get_reg_values(cpu, stage->rs2);
+						stage->rs2_valid = VALID;
+					}
+				}
 				// check if renaming can be done
 				if (can_rename_reg_tag(rename_table)==SUCCESS) {
 					// change the desc regs tag
 					ret = rename_desc_reg(&(stage->rd), rename_table);
 				}
 				else {
-					printf("Failed to rename tag for R%d\n", stage->rd);
+					printf("Cannot Rename Register R%d of pc(%d) :: %s\n", stage->rd, stage->pc, stage->opcode);
 				}
 				break;
 
@@ -573,6 +723,14 @@ int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 						printf("Failed to get renamed tag for R%d\n", stage->rs1);
 					}
 				}
+				else {
+					// check arch reg if valid read from them
+					// here 0 is valid and any other number is invalid
+					if(get_reg_status(cpu, stage->rs1)==INVALID) {
+						stage->rs1_value = get_reg_values(cpu, stage->rs1);
+						stage->rs1_valid = VALID;
+					}
+				}
 				// check if src regs are renamed
 				if (check_if_reg_renamed(stage->rs2, rename_table)==SUCCESS) {
 					// get the src reg renamed tag
@@ -581,13 +739,21 @@ int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 						printf("Failed to get renamed tag for R%d\n", stage->rs2);
 					}
 				}
+				else {
+					// check arch reg if valid read from them
+					// here 0 is valid and any other number is invalid
+					if(get_reg_status(cpu, stage->rs2)==INVALID) {
+						stage->rs2_value = get_reg_values(cpu, stage->rs2);
+						stage->rs2_valid = VALID;
+					}
+				}
 				// check if renaming can be done
 				if (can_rename_reg_tag(rename_table)==SUCCESS) {
 					// change the desc regs tag
 					ret = rename_desc_reg(&(stage->rd), rename_table);
 				}
 				else {
-					printf("Failed to rename tag for R%d\n", stage->rd);
+					printf("Cannot Rename Register R%d of pc(%d) :: %s\n", stage->rd, stage->pc, stage->opcode);
 				}
 				break;
 
@@ -601,6 +767,14 @@ int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 						printf("Failed to get renamed tag for R%d\n", stage->rs1);
 					}
 				}
+				else {
+					// check arch reg if valid read from them
+					// here 0 is valid and any other number is invalid
+					if(get_reg_status(cpu, stage->rs1)==INVALID) {
+						stage->rs1_value = get_reg_values(cpu, stage->rs1);
+						stage->rs1_valid = VALID;
+					}
+				}
 				// check if src regs are renamed
 				if (check_if_reg_renamed(stage->rs2, rename_table)==SUCCESS) {
 					// get the src reg renamed tag
@@ -609,13 +783,21 @@ int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 						printf("Failed to get renamed tag for R%d\n", stage->rs2);
 					}
 				}
+				else {
+					// check arch reg if valid read from them
+					// here 0 is valid and any other number is invalid
+					if(get_reg_status(cpu, stage->rs2)==INVALID) {
+						stage->rs2_value = get_reg_values(cpu, stage->rs2);
+						stage->rs2_valid = VALID;
+					}
+				}
 				// check if renaming can be done
 				if (can_rename_reg_tag(rename_table)==SUCCESS) {
 					// change the desc regs tag
 					ret = rename_desc_reg(&(stage->rd), rename_table);
 				}
 				else {
-					printf("Failed to rename tag for R%d\n", stage->rd);
+					printf("Cannot Rename Register R%d of pc(%d) :: %s\n", stage->rd, stage->pc, stage->opcode);
 				}
 				break;
 
@@ -629,6 +811,14 @@ int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 						printf("Failed to get renamed tag for R%d\n", stage->rs1);
 					}
 				}
+				else {
+					// check arch reg if valid read from them
+					// here 0 is valid and any other number is invalid
+					if(get_reg_status(cpu, stage->rs1)==INVALID) {
+						stage->rs1_value = get_reg_values(cpu, stage->rs1);
+						stage->rs1_valid = VALID;
+					}
+				}
 				// check if src regs are renamed
 				if (check_if_reg_renamed(stage->rs2, rename_table)==SUCCESS) {
 					// get the src reg renamed tag
@@ -637,13 +827,21 @@ int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 						printf("Failed to get renamed tag for R%d\n", stage->rs2);
 					}
 				}
+				else {
+					// check arch reg if valid read from them
+					// here 0 is valid and any other number is invalid
+					if(get_reg_status(cpu, stage->rs1)==INVALID) {
+						stage->rs2_value = get_reg_values(cpu, stage->rs2);
+						stage->rs2_valid = VALID;
+					}
+				}
 				// check if renaming can be done
 				if (can_rename_reg_tag(rename_table)==SUCCESS) {
 					// change the desc regs tag
 					ret = rename_desc_reg(&(stage->rd), rename_table);
 				}
 				else {
-					printf("Failed to rename tag for R%d\n", stage->rd);
+					printf("Cannot Rename Register R%d of pc(%d) :: %s\n", stage->rd, stage->pc, stage->opcode);
 				}
 				break;
 
@@ -666,6 +864,14 @@ int decode(APEX_CPU* cpu, APEX_RENAME* rename_table) {
 					ret = get_reg_renamed_tag(&(stage->rs1), rename_table);
 					if (ret!=SUCCESS) {
 						printf("Failed to get renamed tag for R%d\n", stage->rs1);
+					}
+				}
+				else {
+					// check arch reg if valid read from them
+					// here 0 is valid and any other number is invalid
+					if(get_reg_status(cpu, stage->rs1)==INVALID) {
+						stage->rs2_value = get_reg_values(cpu, stage->rs2);
+						stage->rs2_valid = VALID;
 					}
 				}
 				break;

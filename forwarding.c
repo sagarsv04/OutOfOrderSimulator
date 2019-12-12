@@ -143,28 +143,17 @@ void push_func_unit_stages(APEX_CPU* cpu, int after_iq){
 }
 
 
-int get_reg_values(APEX_CPU* cpu, CPU_Stage* stage, int src_reg_pos, int src_reg) {
+int get_reg_values(APEX_CPU* cpu, int src_reg) {
 	// Get Reg values function
-	int value = 0;
-	if (src_reg_pos == 0) {
-		value = cpu->regs[src_reg];
-	}
-	else if (src_reg_pos == 1) {
-		value = cpu->regs[src_reg];
-	}
-	else if (src_reg_pos == 2) {
-		value = cpu->regs[src_reg];
-	}
-	else {
-		;// Nothing
-	}
+	int value = -1;
+	value = cpu->regs[src_reg];
 	return value;
 }
 
 
 int get_reg_status(APEX_CPU* cpu, int reg_number) {
 	// Get Reg Status function
-	int status = 1; // 1 is invalid
+	int status = 1; // 1 is invalid and 0 is valid
 	if (reg_number > REGISTER_FILE_SIZE) {
 		// Segmentation fault
 		fprintf(stderr, "Segmentation fault for Register location :: %d\n", reg_number);
