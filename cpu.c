@@ -1193,12 +1193,13 @@ int branch_stage(APEX_CPU* cpu) {
 	stage->executed = 0;
 	if ((!stage->stalled)&&(!stage->empty)) {
 		/* Read data from register file for store */
+		int new_pc;
 		switch(stage->inst_type) {
 
 			case BZ:  // ************************************* BZ ************************************* //
 				// load buffer value to mem_address
 				stage->mem_address = stage->buffer;
-				int new_pc = stage->pc + stage->mem_address;
+				new_pc = stage->pc + stage->mem_address;
 				if ((new_pc < 4000)||(new_pc > ((cpu->code_memory_size*4)+4000))) {
 					fprintf(stderr, "Instruction %s Invalid Relative Address %d\n", stage->opcode, new_pc);
 				}
@@ -1215,7 +1216,7 @@ int branch_stage(APEX_CPU* cpu) {
 			case BNZ:  // ************************************* BNZ ************************************* //
 				// load buffer value to mem_address
 				stage->mem_address = stage->buffer;
-				int new_pc = stage->pc + stage->mem_address;
+				new_pc = stage->pc + stage->mem_address;
 				if ((new_pc < 4000)||(new_pc > ((cpu->code_memory_size*4)+4000))) {
 					fprintf(stderr, "Instruction %s Invalid Relative Address %d\n", stage->opcode, new_pc);
 				}
@@ -1724,7 +1725,7 @@ int execute_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue,
 /*
  * ########################################## Commit Stage ##########################################
 */
-int commit_instruction(APEX_CPU* cpu, APEX_IQ* issue_queue, APEX_ROB* rob, APEX_RENAME* rename_table) {
+int commit_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APEX_ROB* rob, APEX_RENAME* rename_table) {
 	// check if rob entry is valid and data is valid then commit instruction and free rob entry
 	int ret = -1;
 
@@ -1849,7 +1850,7 @@ int APEX_cpu_run(APEX_CPU* cpu, int num_cycle, APEX_LSQ* ls_queue, APEX_IQ* issu
 
 			int stage_ret = 0;
 			// commit inst
-			stage_ret = commit_instruction(cpu, issue_queue, rob, rename_table);
+			stage_ret = commit_instruction(cpu, ls_queue, issue_queue, rob, rename_table);
 			// adding inst to FU
 			stage_ret = issue_instruction(cpu, issue_queue, ls_queue);
 			// executing inst
