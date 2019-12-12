@@ -1736,6 +1736,9 @@ int commit_instruction(APEX_CPU* cpu, APEX_IQ* issue_queue, APEX_ROB* rob, APEX_
 		if ((rob_entry->inst_type==STORE)||(rob_entry->inst_type==STR)) {
 			; // no need to free regs or pass rd value
 		}
+		else if ((rob_entry->inst_type==JUMP)||(rob_entry->inst_type==BZ)||(rob_entry->inst_type==BNZ)) {
+			; // no need to free regs or pass rd value
+		}
 		else {
 			// also update IQ here as well
 			LS_IQ_Entry ls_iq_entry = {
@@ -1760,6 +1763,14 @@ int commit_instruction(APEX_CPU* cpu, APEX_IQ* issue_queue, APEX_ROB* rob, APEX_
 					fprintf(stderr, "Commit Failed to Update IQ Entry (%d) for pc(%d)\n", ret, ls_iq_entry.pc);
 				}
 			}
+
+			ret = update_ls_queue_entry_reg(ls_queue, ls_iq_entry);
+			if (ret==FAILURE) {
+				if (ENABLE_DEBUG_MESSAGES_L2) {
+					fprintf(stderr, "Commit Nothing to Update in LSQ Entry (%d) for pc(%d)\n", ls_iq_entry.pc);
+				}
+			}
+
 			// put the value in DRF
 			switch (cpu->stage[DRF].inst_type) {
 				// check single src reg instructions

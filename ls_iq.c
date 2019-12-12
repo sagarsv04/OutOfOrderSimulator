@@ -170,7 +170,7 @@ int get_issue_queue_index_to_issue(APEX_IQ* issue_queue, int* issue_index) {
 					break;
 
 				// check single src reg instructions
-				case LOAD: case MOV: case ADDL: case SUBL: case JUMP:
+				case STORE: case LOAD: case MOV: case ADDL: case SUBL: case JUMP:
 					if (issue_queue->iq_entries[i].rs1_ready) {
 						issue_index[i] = i;
 						index_sum += 1;
@@ -178,15 +178,15 @@ int get_issue_queue_index_to_issue(APEX_IQ* issue_queue, int* issue_index) {
 					break;
 
 				// check single src/desc reg instructions
-				case STORE:
-					if ((issue_queue->iq_entries[i].rs1_ready)&&(issue_queue->iq_entries[i].rd_ready)) {
-						issue_index[i] = i;
-						index_sum += 1;
-					}
-					break;
+				// case STORE:
+				// 	if ((issue_queue->iq_entries[i].rs1_ready)&&(issue_queue->iq_entries[i].rd_ready)) {
+				// 		issue_index[i] = i;
+				// 		index_sum += 1;
+				// 	}
+				// 	break;
 
 				// check two src reg instructions
-				case LDR: case ADD: case SUB: case MUL: case DIV: case AND: case OR: case EXOR:
+				case STR: case LDR: case ADD: case SUB: case MUL: case DIV: case AND: case OR: case EXOR:
 					if ((issue_queue->iq_entries[i].rs1_ready)&&(issue_queue->iq_entries[i].rs2_ready)) {
 						issue_index[i] = i;
 						index_sum += 1;
@@ -194,12 +194,12 @@ int get_issue_queue_index_to_issue(APEX_IQ* issue_queue, int* issue_index) {
 					break;
 
 				// check double src and desc reg instructions
-				case STR:
-					if ((issue_queue->iq_entries[i].rs1_ready)&&(issue_queue->iq_entries[i].rs2_ready)&&(issue_queue->iq_entries[i].rd_ready)) {
-						issue_index[i] = i;
-						index_sum += 1;
-					}
-					break;
+				// case STR:
+				// 	if ((issue_queue->iq_entries[i].rs1_ready)&&(issue_queue->iq_entries[i].rs2_ready)&&(issue_queue->iq_entries[i].rd_ready)) {
+				// 		issue_index[i] = i;
+				// 		index_sum += 1;
+				// 	}
+				// 	break;
 				// confirm if for Store we need to check all three src reg before issuing
 				// or the src reg (desc rd) is checked in LSQ before its issueed from LSQ to Mem stage
 				default:
@@ -321,10 +321,10 @@ int update_ls_queue_entry_mem_address(APEX_LSQ* ls_queue, LS_IQ_Entry ls_iq_entr
 		if (ls_queue->lsq_entries[ls_iq_entry.lsq_index].inst_ptr == ls_iq_entry.pc) {
 			ls_queue->lsq_entries[ls_iq_entry.lsq_index].mem_address = ls_iq_entry.mem_address;
 			ls_queue->lsq_entries[ls_iq_entry.lsq_index].mem_valid = VALID;
-			if (ls_queue->lsq_entries[ls_iq_entry.lsq_index].rd==ls_iq_entry.rd) {
-				ls_queue->lsq_entries[ls_iq_entry.lsq_index].rd_value = ls_iq_entry.rd_value;
-				ls_queue->lsq_entries[ls_iq_entry.lsq_index].data_ready = VALID;
-			}
+			// if (ls_queue->lsq_entries[ls_iq_entry.lsq_index].rd==ls_iq_entry.rd) {
+			// 	ls_queue->lsq_entries[ls_iq_entry.lsq_index].rd_value = ls_iq_entry.rd_value;
+			// 	ls_queue->lsq_entries[ls_iq_entry.lsq_index].data_ready = VALID;
+			// }
 		}
 	}
 
@@ -338,8 +338,8 @@ int update_ls_queue_entry_reg(APEX_LSQ* ls_queue, LS_IQ_Entry ls_iq_entry) {
 
 	for (int i=0; i<LSQ_SIZE; i++) {
 		if (ls_queue->lsq_entries[i].status == VALID) {
-			if ((ls_queue->lsq_entries[i].load_store==STORE)||(ls_queue->lsq_entries[i].load_store==STR)) {
-				if (ls_queue->lsq_entries[i].data_ready==INVALID) {
+			if (ls_queue->lsq_entries[i].data_ready==INVALID) {
+				if ((ls_queue->lsq_entries[i].load_store==STORE)||(ls_queue->lsq_entries[i].load_store==STR)) {
 					if (ls_queue->lsq_entries[i].rd==ls_iq_entry.rd) {
 						ls_queue->lsq_entries[i].rd_value = ls_iq_entry.rd_value;
 						ls_queue->lsq_entries[i].data_ready = VALID;
