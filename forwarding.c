@@ -91,12 +91,12 @@ void clear_stage_entry(APEX_CPU* cpu, int stage_index){
 	cpu->stage[stage_index].rd = INVALID;
 	cpu->stage[stage_index].rd_valid = INVALID;;
 	cpu->stage[stage_index].rs1 = INVALID;
-	cpu->stage[stage_index].rs1_valid = 0;
+	cpu->stage[stage_index].rs1_valid = INVALID;
 	cpu->stage[stage_index].rs2 = INVALID;
-	cpu->stage[stage_index].rs2_valid = 0;
+	cpu->stage[stage_index].rs2_valid = INVALID;
 	cpu->stage[stage_index].inst_type = INVALID;
-	cpu->stage[stage_index].pc = -1;
-	cpu->stage[stage_index].empty = 1;
+	cpu->stage[stage_index].pc = INVALID;
+	cpu->stage[stage_index].empty = VALID;
 	cpu->stage[stage_index].stage_cycle = INVALID;
 	strcpy(cpu->stage[stage_index].opcode, "");
 }

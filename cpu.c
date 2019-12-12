@@ -1198,45 +1198,52 @@ int branch_stage(APEX_CPU* cpu) {
 			case BZ:  // ************************************* BZ ************************************* //
 				// load buffer value to mem_address
 				stage->mem_address = stage->buffer;
-				if (!((stage->pc + stage->mem_address) < 4000)) {
-					// cpu->pc = stage->pc + stage->mem_address;	// should i change pc value when rob commits Branch Inst
-					// un stall Fetch and Decode stage if they are stalled
-					// cpu->stage[DRF].stalled = 0;
-					// cpu->stage[F].stalled = 0;
-					// cpu->flags[ZF] = 0;
+				int new_pc = stage->pc + stage->mem_address;
+				if ((new_pc < 4000)||(new_pc > ((cpu->code_memory_size*4)+4000))) {
+					fprintf(stderr, "Instruction %s Invalid Relative Address %d\n", stage->opcode, new_pc);
 				}
 				else {
-					fprintf(stderr, "Instruction %s Invalid Relative Address %d\n", stage->opcode, cpu->pc + stage->mem_address);
+					// so rob can commite
+					// stage->rd_value = INVALID;
+					// stage->rd_valid = VALID;
+					// cpu->pc = new_pc;
+					// clear_stage_entry(cpu, DRF);
+					// clear_stage_entry(cpu, F);
 				}
 				break;
 
 			case BNZ:  // ************************************* BNZ ************************************* //
 				// load buffer value to mem_address
 				stage->mem_address = stage->buffer;
-				if (!((stage->pc + stage->mem_address) < 4000)) {
-					// cpu->pc = stage->pc + stage->mem_address;	// should i change pc value when rob commits Branch Inst
-					// un stall Fetch and Decode stage if they are stalled
-					// cpu->stage[DRF].stalled = 0;
-					// cpu->stage[F].stalled = 0;
-					// cpu->flags[ZF] = 0;
+				int new_pc = stage->pc + stage->mem_address;
+				if ((new_pc < 4000)||(new_pc > ((cpu->code_memory_size*4)+4000))) {
+					fprintf(stderr, "Instruction %s Invalid Relative Address %d\n", stage->opcode, new_pc);
 				}
 				else {
-					fprintf(stderr, "Instruction %s Invalid Relative Address %d\n", stage->opcode, cpu->pc + stage->mem_address);
+					// so rob can commite
+					// stage->rd_value = INVALID;
+					// stage->rd_valid = VALID;
+					// cpu->pc = new_pc;
+					// clear_stage_entry(cpu, DRF);
+					// clear_stage_entry(cpu, F);
 				}
 				break;
 
 			case JUMP:  // ************************************* BNZ ************************************* //
 				// load buffer value to mem_address
 				stage->mem_address = stage->buffer;
-				if (!((stage->pc + stage->mem_address) < 4000)) {
-					// cpu->pc = stage->pc + stage->mem_address;	// should i change pc value when rob commits Branch Inst
-					// un stall Fetch and Decode stage if they are stalled
-					// cpu->stage[DRF].stalled = 0;
-					// cpu->stage[F].stalled = 0;
-					// cpu->flags[ZF] = 0;
+				int new_pc = stage->rs1_value + stage->mem_address;
+				if ((new_pc < 4000)||(new_pc > ((cpu->code_memory_size*4)+4000))) {
+					fprintf(stderr, "Instruction %s Invalid Address %d\n", stage->opcode, new_pc);
 				}
 				else {
-					fprintf(stderr, "Instruction %s Invalid Relative Address %d\n", stage->opcode, cpu->pc + stage->mem_address);
+					// so rob can commite
+					stage->rd_value = INVALID;
+					stage->rd_valid = VALID;
+					// just change the pc and flush the F and DRF
+					cpu->pc = new_pc;
+					clear_stage_entry(cpu, DRF);
+					clear_stage_entry(cpu, F);
 				}
 				break;
 
@@ -1325,16 +1332,14 @@ int writeback_stage(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APE
 	// take MUL_THREE, INT_TWO Stage and update the ROB entry so in next cycle
 	// instruction can be commited
 
-	int cpu_stages[CPU_OUT_STAGES] = {INT_TWO, MUL_THREE, MEM};
+	int cpu_stages[CPU_OUT_STAGES] = {INT_TWO, MUL_THREE, BRANCH, MEM};
 
 	for (int i=0; i<CPU_OUT_STAGES; i++) {
 
 		CPU_Stage* stage = &cpu->stage[cpu_stages[i]];
 
 		if ((stage->executed)&&(!stage->empty)) {
-
 			int ret = -1;
-
 			LS_IQ_Entry ls_iq_entry = {
 				.inst_type = stage->inst_type,
 				.executed = stage->executed,
@@ -1353,36 +1358,46 @@ int writeback_stage(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APE
 				.lsq_index = stage->lsq_index,
 				.stage_cycle = stage->stage_cycle};
 
-			if (cpu_stages[i]==INT_TWO) {
-				if ((stage->inst_type==STORE)||(stage->inst_type==STR)||(stage->inst_type==LOAD)||(stage->inst_type==LDR))	{
-					ret = update_ls_queue_entry_mem_address(ls_queue, ls_iq_entry);
-					if (ret!=SUCCESS) {
-						if (ENABLE_DEBUG_MESSAGES_L2) {
-							fprintf(stderr, "Failed to Update LSQ Entry (%d) for pc(%d):: %.5s\n", ret, stage->pc, stage->opcode);
-						}
+			ROB_Entry rob_entry = {
+				.inst_type = stage->inst_type,
+				.executed = stage->executed,
+				.pc = stage->pc,
+				.rd = stage->rd,
+				.rd_value = stage->rd_value,
+				.rd_valid = stage->rd_valid,
+				.rs1 = stage->rs1,
+				.rs1_value = stage->rs1_value,
+				.rs1_valid = stage->rs1_valid,
+				.rs2 = stage->rs2,
+				.rs2_value = stage->rs2_value,
+				.rs2_valid = stage->rs2_valid,
+				.buffer = stage->buffer,
+				.stage_cycle = stage->stage_cycle};
+
+			if ((cpu_stages[i]==INT_TWO)&&((stage->inst_type==STORE)||(stage->inst_type==STR)||(stage->inst_type==LOAD)||(stage->inst_type==LDR))) {
+				ret = update_ls_queue_entry_mem_address(ls_queue, ls_iq_entry);
+				if (ret!=SUCCESS) {
+					if (ENABLE_DEBUG_MESSAGES_L2) {
+						fprintf(stderr, "Failed to Update LSQ Entry (%d) for pc(%d):: %.5s\n", ret, stage->pc, stage->opcode);
 					}
-					continue;
 				}
+				continue;
 			}
-
-			if (stage->rd_valid) {
-				// int iq_src_regs_index[IQ_SIZE][IQ_SIZE] = {[0 ... (2*IQ_SIZE)-1] = -1}
-				ROB_Entry rob_entry = {
-					.inst_type = stage->inst_type,
-					.executed = stage->executed,
-					.pc = stage->pc,
-					.rd = stage->rd,
-					.rd_value = stage->rd_value,
-					.rd_valid = stage->rd_valid,
-					.rs1 = stage->rs1,
-					.rs1_value = stage->rs1_value,
-					.rs1_valid = stage->rs1_valid,
-					.rs2 = stage->rs2,
-					.rs2_value = stage->rs2_value,
-					.rs2_valid = stage->rs2_valid,
-					.buffer = stage->buffer,
-					.stage_cycle = stage->stage_cycle};
-
+			else if (cpu_stages[i]==BRANCH) {
+				ret = update_reorder_buffer_entry_data(rob, rob_entry);
+				if (ret==ERROR) {
+					if (ENABLE_DEBUG_MESSAGES_L2) {
+						fprintf(stderr, "Writeback Failed to Update Rob Entry (%d) for pc(%d):: %.5s\n", ret, stage->pc, stage->opcode);
+					}
+				}
+				if (ret==FAILURE) {
+					if (ENABLE_DEBUG_MESSAGES_L2) {
+						fprintf(stderr, "Writeback Nothing to Update in Rob Entry (%d) for pc(%d):: %.5s\n", ret, stage->pc, stage->opcode);
+					}
+				}
+				continue;
+			}
+			else {
 				ret = update_reorder_buffer_entry_data(rob, rob_entry);
 				if (ret==ERROR) {
 					if (ENABLE_DEBUG_MESSAGES_L2) {
@@ -1408,11 +1423,8 @@ int writeback_stage(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APE
 						fprintf(stderr, "Writeback Nothing to Update in LSQ Entry (%d) for pc(%d):: %.5s\n", ret, stage->pc, stage->opcode);
 					}
 				}
-
 				// Also update DRF regs so next they can be dispatched
-
 				switch (cpu->stage[DRF].inst_type) {
-
 					// check single src reg instructions
 					case STORE: case LOAD: case MOV: case ADDL: case SUBL: case JUMP:
 						if ((cpu->stage[DRF].rs1==stage->rd)&&(cpu->stage[DRF].rs1_valid==INVALID)) {
@@ -1420,7 +1432,6 @@ int writeback_stage(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APE
 							cpu->stage[DRF].rs1_valid = stage->rd_valid;
 						}
 						break;
-
 					// check two src reg instructions
 					case STR: case LDR: case ADD: case SUB: case MUL: case DIV: case AND: case OR: case EXOR:
 						if ((cpu->stage[DRF].rs1==stage->rd)&&(cpu->stage[DRF].rs1_valid==INVALID)) {
@@ -1437,10 +1448,10 @@ int writeback_stage(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, APE
 						break;
 				}
 			}
-			else {
-				if (ENABLE_DEBUG_MESSAGES_L2) {
-					fprintf(stderr, "INT Two Stage Value not Ready for Phy Reg R%d for pc(%d):: %.5s\n", stage->rd, stage->pc, stage->opcode);
-				}
+		}
+		else {
+			if (ENABLE_DEBUG_MESSAGES_L2) {
+				fprintf(stderr, "Writeback for Stage %d Not Ready to Process\n", cpu_stages[i]);
 			}
 		}
 	}
