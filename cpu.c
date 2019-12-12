@@ -171,7 +171,7 @@ void print_cpu_content(APEX_CPU* cpu) {
 */
 void set_arch_reg_status(APEX_CPU* cpu, APEX_RENAME* rename_table, int reg_number, int status) {
 	// Set Reg Status function
-	// NOTE: insted of set inc or dec regs_invalid
+	// NOTE: instead of set inc or dec regs_invalid
 	if (reg_number > REGISTER_FILE_SIZE) {
 		// Segmentation fault
 		fprintf(stderr, "Segmentation fault for Register location :: %d\n", reg_number);
@@ -1275,7 +1275,7 @@ int mem_stage(APEX_CPU* cpu) {
 				}
 				else {
 					// wait for 3 cycles
-					if (stage->rd_valid = VALID) {
+					if (stage->rd_valid == VALID) {
 						cpu->data_memory[stage->mem_address] = stage->rd_value;
 						stage->executed = 1;
 					}
