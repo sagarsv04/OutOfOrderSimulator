@@ -1612,6 +1612,18 @@ int dispatch_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue
 				}
 				break;
 
+			case HALT:
+				// add entry to ROB
+				if (can_add_entry_in_reorder_buffer(rob)==SUCCESS) {
+					ret = add_reorder_buffer_entry(rob, rob_entry);
+					if(ret!=SUCCESS) {
+						if (ENABLE_DEBUG_MESSAGES_L2) {
+							fprintf(stderr, "ROB Eentry Failed for Inst Type :: %d\n", stage->inst_type);
+						}
+					}
+				}
+				break;
+
 			default:
 				break;
 		}
@@ -1847,7 +1859,10 @@ int commit_instruction(APEX_CPU* cpu, APEX_LSQ* ls_queue, APEX_IQ* issue_queue, 
 				cpu->pc = rob_entry->pc + 4;
 			}
 		}
-
+		else if (rob_entry->inst_type==HALT) {
+			// exit the simulation
+			return HALT;
+		}
 		else {
 			// also update IQ here as well
 			LS_IQ_Entry ls_iq_entry = {
@@ -1959,6 +1974,9 @@ int APEX_cpu_run(APEX_CPU* cpu, int num_cycle, APEX_LSQ* ls_queue, APEX_IQ* issu
 			int stage_ret = 0;
 			// commit inst
 			stage_ret = commit_instruction(cpu, ls_queue, issue_queue, rob, rename_table);
+			if (stage_ret==HALT) {
+				ret = stage_ret;
+			}
 			// adding inst to FU
 			stage_ret = issue_instruction(cpu, issue_queue, ls_queue);
 			// executing inst
@@ -1980,9 +1998,9 @@ int APEX_cpu_run(APEX_CPU* cpu, int num_cycle, APEX_LSQ* ls_queue, APEX_IQ* issu
 			// push only after IQ Stages
 			push_func_unit_stages(cpu, VALID);
 
-			if ((stage_ret!=HALT)&&(stage_ret!=SUCCESS)) {
-				ret = stage_ret;
-			}
+			// if ((stage_ret!=HALT)&&(stage_ret!=SUCCESS)) {
+			// 	ret = stage_ret;
+			// }
 		}
 	}
 

@@ -94,6 +94,9 @@ int add_reorder_buffer_entry(APEX_ROB* rob, ROB_Entry rob_entry) {
 		rob->rob_entry[rob->issue_ptr].rd_value = -1;
 		rob->rob_entry[rob->issue_ptr].exception = 0;
 		rob->rob_entry[rob->issue_ptr].valid = 0;
+		if (rob_entry.inst_type==HALT) {
+			rob->rob_entry[rob->issue_ptr].valid = VALID;
+		}
 		// increment buffer_length and issue_ptr
 		rob->buffer_length += 1;
 		rob->issue_ptr += 1;
@@ -129,6 +132,7 @@ int update_reorder_buffer_entry_data(APEX_ROB* rob, ROB_Entry rob_entry) {
 				rob->rob_entry[update_position].rd_value = rob_entry.rd_value;
 				rob->rob_entry[update_position].valid = rob_entry.rd_valid;
 				if (rob_entry.inst_type==BRANCH) {
+					rob->rob_entry[update_position].valid = rob_entry.rd_valid;
 					rob->rob_entry[update_position].exception = rob_entry.rd_valid;
 				}
 			}
